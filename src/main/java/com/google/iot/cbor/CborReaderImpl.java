@@ -117,8 +117,8 @@ class CborReaderImpl implements CborReader {
                         additionalData = CborTag.UNTAGGED;
 
                     } else {
-                        LOGGER.warning(explanation +
-                                ", long wrapped to negative, use Long.toUnsignedString() for display");
+//                        LOGGER.warning(explanation +
+//                                ", long wrapped to negative, use Long.toUnsignedString() for display");
                     }
                 }
 
