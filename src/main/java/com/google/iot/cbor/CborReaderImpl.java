@@ -149,12 +149,8 @@ class CborReaderImpl implements CborReader {
                     return CborInteger.create(additionalData, tag, CborMajorType.POS_INTEGER);
 
                 case CborMajorType.NEG_INTEGER:
-                    if (additionalData < 0) {
-                        throw new CborParseException();
-                    } else {
-                        if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                        return CborInteger.create(-1 - additionalData, tag);
-                    }
+                    if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
+                    return CborInteger.create(-1 - additionalData, tag, CborMajorType.NEG_INTEGER);
 
                 case CborMajorType.BYTE_STRING:
                     if (additionalData < 0) {
