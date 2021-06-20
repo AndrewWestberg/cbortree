@@ -56,7 +56,10 @@ class CborReaderImpl implements CborReader {
                 return mDecoderStream.hasRemaining() && (mDecoderStream.peek() != BREAK);
             }
             return mRemainingObjects != 0;
-        } catch (IOException x) {
+        } catch(EOFException x) {
+            return false;
+        }
+        catch (IOException x) {
             x.printStackTrace();
             // We say true here so that we will call readDataItem() and get the exception
             return true;
