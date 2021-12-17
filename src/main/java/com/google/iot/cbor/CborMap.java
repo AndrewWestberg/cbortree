@@ -17,6 +17,8 @@
 package com.google.iot.cbor;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+
+import java.math.BigInteger;
 import java.util.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -340,7 +342,7 @@ public abstract class CborMap extends CborObject {
 
     @Override
     public final int getAdditionalInformation() {
-        return CborInteger.calcAdditionalInformation(mapValue().size());
+        return CborInteger.calcAdditionalInformation(BigInteger.valueOf(mapValue().size()));
     }
 
     @SuppressWarnings("unchecked")

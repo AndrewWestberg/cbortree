@@ -17,9 +17,10 @@
 package com.google.iot.cbor;
 
 import javax.annotation.Nullable;
+import java.math.BigInteger;
 
 final class CborIntegerImpl extends CborInteger {
-    private final long mValue;
+    private final BigInteger mValue;
     private final int mTag;
     private final Integer mMajorType;
 
@@ -28,7 +29,7 @@ final class CborIntegerImpl extends CborInteger {
         return mTag;
     }
 
-    CborIntegerImpl(long value, int tag, @Nullable Integer majorType) {
+    CborIntegerImpl(BigInteger value, int tag, @Nullable Integer majorType) {
         if (!CborTag.isValid(tag)) {
             throw new IllegalArgumentException("Invalid tag value " + tag);
         }
@@ -46,6 +47,11 @@ final class CborIntegerImpl extends CborInteger {
 
     @Override
     public long longValue() {
+        return mValue.longValue();
+    }
+
+    @Override
+    public BigInteger bigIntegerValue() {
         return mValue;
     }
 }

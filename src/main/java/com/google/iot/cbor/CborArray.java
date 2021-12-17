@@ -17,6 +17,8 @@
 package com.google.iot.cbor;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -126,7 +128,7 @@ public abstract class CborArray extends CborObject implements Iterable<CborObjec
     public static CborArray createFromJavaObject(int[] obj) {
         CborArray array = CborArray.create();
         for (int value : (int[]) obj) {
-            array.add(CborInteger.create(value));
+            array.add(CborInteger.create(BigInteger.valueOf(value)));
         }
         return array;
     }
@@ -140,7 +142,7 @@ public abstract class CborArray extends CborObject implements Iterable<CborObjec
     public static CborArray createFromJavaObject(short[] obj) {
         CborArray array = CborArray.create();
         for (short value : (short[]) obj) {
-            array.add(CborInteger.create(value));
+            array.add(CborInteger.create(BigInteger.valueOf(value)));
         }
         return array;
     }
@@ -154,7 +156,7 @@ public abstract class CborArray extends CborObject implements Iterable<CborObjec
     public static CborArray createFromJavaObject(long[] obj) {
         CborArray array = CborArray.create();
         for (long value : (long[]) obj) {
-            array.add(CborInteger.create(value));
+            array.add(CborInteger.create(BigInteger.valueOf(value)));
         }
         return array;
     }
@@ -305,7 +307,7 @@ public abstract class CborArray extends CborObject implements Iterable<CborObjec
 
     @Override
     public final int getAdditionalInformation() {
-        return CborInteger.calcAdditionalInformation(size());
+        return CborInteger.calcAdditionalInformation(BigInteger.valueOf(size()));
     }
 
     @Override

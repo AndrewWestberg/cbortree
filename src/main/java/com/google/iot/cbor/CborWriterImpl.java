@@ -19,6 +19,7 @@ package com.google.iot.cbor;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
@@ -53,8 +54,8 @@ class CborWriterImpl implements CborWriter {
         mEncoderStream.put((byte) ((majorType << 5) + (val & 0x1F)));
     }
 
-    private void writeCborFullInteger(int majorType, long val) throws IOException {
-        if (val < 0) {
+    private void writeCborFullInteger(int majorType, BigInteger val) throws IOException {
+        if (val.compareTo(BigInteger.ZERO) < 0) {
             throw new IllegalArgumentException("val cannot be negative");
         }
 
@@ -64,19 +65,19 @@ class CborWriterImpl implements CborWriter {
 
         switch (ai) {
             case CborObject.ADDITIONAL_INFO_EXTRA_1B:
-                mEncoderStream.put((byte) val);
+                mEncoderStream.put(val.byteValue());
                 break;
 
             case CborObject.ADDITIONAL_INFO_EXTRA_2B:
-                mEncoderStream.putShort((short) val);
+                mEncoderStream.putShort(val.shortValue());
                 break;
 
             case CborObject.ADDITIONAL_INFO_EXTRA_4B:
-                mEncoderStream.putInt((int) val);
+                mEncoderStream.putInt(val.intValue());
                 break;
 
             case CborObject.ADDITIONAL_INFO_EXTRA_8B:
-                mEncoderStream.putLong(val);
+                mEncoderStream.putLong(val.longValue());
                 break;
         }
     }
@@ -85,7 +86,7 @@ class CborWriterImpl implements CborWriter {
     @CanIgnoreReturnValue
     public CborWriter writeTag(int tag) throws IOException {
         if (tag != CborTag.UNTAGGED) {
-            writeCborFullInteger(CborMajorType.TAG, tag);
+            writeCborFullInteger(CborMajorType.TAG, BigInteger.valueOf(tag));
         }
         return this;
     }
@@ -117,7 +118,7 @@ class CborWriterImpl implements CborWriter {
 
     @CanIgnoreReturnValue
     private CborWriterImpl writeDataItem(CborArray array) throws IOException {
-        writeCborFullInteger(array.getMajorType(), array.size());
+        writeCborFullInteger(array.getMajorType(), BigInteger.valueOf(array.size()));
         for (CborObject obj : array) {
             writeDataItem(obj);
         }
@@ -145,10 +146,10 @@ class CborWriterImpl implements CborWriter {
 
     @CanIgnoreReturnValue
     private CborWriterImpl writeDataItem(CborInteger obj) throws IOException {
-        long val = obj.longValue();
+        BigInteger val = obj.bigIntegerValue();
 
-        if (val < 0) {
-            val = -val - 1;
+        if (val.compareTo(BigInteger.ZERO) < 0) {
+            val = val.negate().subtract(BigInteger.ONE);
         }
 
         writeCborFullInteger(obj.getMajorType(), val);
@@ -157,7 +158,7 @@ class CborWriterImpl implements CborWriter {
 
     @CanIgnoreReturnValue
     private CborWriterImpl writeDataItem(CborMap map) throws IOException {
-        writeCborFullInteger(map.getMajorType(), map.mapValue().size());
+        writeCborFullInteger(map.getMajorType(), BigInteger.valueOf(map.mapValue().size()));
         for (Map.Entry<CborObject, CborObject> entry : map.mapValue().entrySet()) {
             writeDataItem(entry.getKey());
             writeDataItem(entry.getValue());
@@ -167,20 +168,20 @@ class CborWriterImpl implements CborWriter {
 
     @CanIgnoreReturnValue
     private CborWriterImpl writeDataItem(CborSimple obj) throws IOException {
-        writeCborFullInteger(obj.getMajorType(), obj.getValue());
+        writeCborFullInteger(obj.getMajorType(), BigInteger.valueOf(obj.getValue()));
         return this;
     }
 
     @CanIgnoreReturnValue
     private CborWriterImpl writeDataItem(CborByteString obj) throws IOException {
-        writeCborFullInteger(obj.getMajorType(), obj.byteArrayValue().length);
+        writeCborFullInteger(obj.getMajorType(), BigInteger.valueOf(obj.byteArrayValue().length));
         mEncoderStream.put(obj.byteArrayValue());
         return this;
     }
 
     @CanIgnoreReturnValue
     private CborWriterImpl writeDataItem(CborTextString obj) throws IOException {
-        writeCborFullInteger(obj.getMajorType(), obj.byteArrayValue().length);
+        writeCborFullInteger(obj.getMajorType(), BigInteger.valueOf(obj.byteArrayValue().length));
         mEncoderStream.put(obj.byteArrayValue());
         return this;
     }

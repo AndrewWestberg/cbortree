@@ -59,7 +59,7 @@ public abstract class CborByteString extends CborObject {
 
     @Override
     public int getAdditionalInformation() {
-        return CborInteger.calcAdditionalInformation(byteArrayValue().length);
+        return CborInteger.calcAdditionalInformation(BigInteger.valueOf(byteArrayValue().length));
     }
 
     @Override

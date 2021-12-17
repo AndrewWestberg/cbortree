@@ -17,6 +17,7 @@
 package com.google.iot.cbor;
 
 import java.io.*;
+import java.math.BigInteger;
 import java.nio.BufferUnderflowException;
 import java.util.Locale;
 import java.util.NoSuchElementException;
@@ -84,50 +85,24 @@ class CborReaderImpl implements CborReader {
             byte firstByte = mDecoderStream.get();
             int majorType = ((firstByte & 0xFF) >> 5);
             byte additionalInfo = (byte) (firstByte & 0x1F);
-            long additionalData;
+            BigInteger additionalData;
 
             if (additionalInfo < CborObject.ADDITIONAL_INFO_EXTRA_1B) {
-                additionalData = additionalInfo;
+                additionalData = BigInteger.valueOf(additionalInfo);
 
             } else if (additionalInfo == CborObject.ADDITIONAL_INFO_EXTRA_1B) {
-                additionalData = (mDecoderStream.get() & 0xFF);
+                additionalData = BigInteger.valueOf(mDecoderStream.get() & 0xFF);
 
             } else if (additionalInfo == CborObject.ADDITIONAL_INFO_EXTRA_2B) {
-                additionalData = mDecoderStream.getShort() & 0xFFFF;
+                additionalData = BigInteger.valueOf(mDecoderStream.getShort() & 0xFFFF);
 
             } else if (additionalInfo == CborObject.ADDITIONAL_INFO_EXTRA_4B) {
-                additionalData = mDecoderStream.getInt() & 0xFFFFFFFFL;
+                additionalData = BigInteger.valueOf(mDecoderStream.getInt() & 0xFFFFFFFFL);
 
             } else if (additionalInfo == CborObject.ADDITIONAL_INFO_EXTRA_8B) {
-                additionalData = mDecoderStream.getLong();
-
-                // We perform an overflow check here by checking for negative values.
-                // We don't currently support the full use of 64 bit unsigned integers,
-                // so any number larger than Long.MAX_VALUE will ultimately be wrapped
-                // around to be negative. This check identifies such cases and warns
-                // the user, EXCEPT when we are a double-precision float.
-                // <https://github.com/google/cbortree/issues/1>
-                if (additionalData < 0 && majorType != CborMajorType.OTHER) {
-                    final String explanation =
-                            String.format(
-                                    Locale.ENGLISH,
-                                    "Additional data value was too large: 0x%X",
-                                    additionalData);
-
-                    if (majorType == CborMajorType.TAG) {
-                        // If this was a tag, then we can simply ignore it.
-                        LOGGER.warning(explanation + ", ignoring tag");
-                        additionalData = CborTag.UNTAGGED;
-
-                    } else {
-//                        LOGGER.warning(explanation +
-//                                ", long wrapped to negative, use Long.toUnsignedString() for display");
-                    }
-                }
-
+                additionalData = new BigInteger(Long.toUnsignedString(mDecoderStream.getLong()));
             } else if (additionalInfo == CborObject.ADDITIONAL_INFO_EXTRA_INDEF) {
-                additionalData = UNSPECIFIED;
-
+                additionalData = BigInteger.valueOf(UNSPECIFIED);
             } else {
                 throw new CborParseException(
                         "Undefined additional info value "
@@ -138,8 +113,8 @@ class CborReaderImpl implements CborReader {
 
             switch (majorType) {
                 case CborMajorType.TAG:
-                    if (CborTag.isValid(additionalData)) {
-                        mLastTag = (int) additionalData;
+                    if (CborTag.isValid(additionalData.longValue())) {
+                        mLastTag = (int) additionalData.longValue();
 
                     } else {
                         LOGGER.warning("Ignoring invalid tag: " + additionalData);
@@ -153,13 +128,13 @@ class CborReaderImpl implements CborReader {
 
                 case CborMajorType.NEG_INTEGER:
                     if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                    return CborInteger.create(-1 - additionalData, tag, CborMajorType.NEG_INTEGER);
+                    return CborInteger.create(BigInteger.valueOf(-1L).subtract(additionalData), tag, CborMajorType.NEG_INTEGER);
 
                 case CborMajorType.BYTE_STRING:
-                    if (additionalData < 0) {
+                    if (additionalData.compareTo(BigInteger.ZERO) < 0) {
                         ByteArrayOutputStream aggregator = new ByteArrayOutputStream();
                         CborReaderImpl subparser =
-                                new CborReaderImpl(mDecoderStream, (int) additionalData);
+                                new CborReaderImpl(mDecoderStream, additionalData.intValue());
                         while (subparser.hasRemainingDataItems()) {
                             CborObject obj = subparser.readDataItem();
                             if (obj instanceof CborByteString
@@ -179,17 +154,17 @@ class CborReaderImpl implements CborReader {
                         return CborByteString.create(
                                 aggregator.toByteArray(), 0, aggregator.size(), tag);
                     } else {
-                        byte[] bytes = new byte[(int) additionalData];
+                        byte[] bytes = new byte[additionalData.intValue()];
                         mDecoderStream.get(bytes);
                         if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
                         return CborByteString.create(bytes, 0, bytes.length, tag);
                     }
 
                 case CborMajorType.TEXT_STRING:
-                    if (additionalData < 0) {
+                    if (additionalData.compareTo(BigInteger.ZERO) < 0) {
                         ByteArrayOutputStream aggregator = new ByteArrayOutputStream();
                         CborReaderImpl subparser =
-                                new CborReaderImpl(mDecoderStream, (int) additionalData);
+                                new CborReaderImpl(mDecoderStream, additionalData.intValue());
                         while (subparser.hasRemainingDataItems()) {
                             CborObject obj = subparser.readDataItem();
                             if (obj instanceof CborTextString) {
@@ -208,7 +183,7 @@ class CborReaderImpl implements CborReader {
                         return CborTextString.create(
                                 aggregator.toByteArray(), 0, aggregator.size(), tag);
                     } else {
-                        byte[] bytes = new byte[(int) additionalData];
+                        byte[] bytes = new byte[additionalData.intValue()];
                         mDecoderStream.get(bytes);
                         if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
                         return CborTextString.create(bytes, 0, bytes.length, tag);
@@ -218,13 +193,13 @@ class CborReaderImpl implements CborReader {
                     {
                         CborArray ret = CborArray.create(tag);
                         CborReaderImpl subparser =
-                                new CborReaderImpl(mDecoderStream, (int) additionalData);
+                                new CborReaderImpl(mDecoderStream, additionalData.intValue());
                         while (subparser.hasRemainingDataItems()) {
                             ret.add(subparser.readDataItem());
                         }
                         if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
 
-                        if ((additionalData == UNSPECIFIED && mDecoderStream.get() != BREAK)) {
+                        if ((additionalData.compareTo(BigInteger.valueOf(UNSPECIFIED)) == 0 && mDecoderStream.get() != BREAK)) {
                             throw new CborParseException("Missing break");
                         }
                         return ret;
@@ -233,11 +208,11 @@ class CborReaderImpl implements CborReader {
                 case CborMajorType.MAP:
                     {
                         CborMap ret = CborMap.create(tag);
-                        if (additionalData != UNSPECIFIED) {
-                            additionalData *= 2;
+                        if (additionalData.compareTo(BigInteger.valueOf(UNSPECIFIED)) != 0) {
+                            additionalData = additionalData.multiply(BigInteger.valueOf(2L));
                         }
                         CborReaderImpl subparser =
-                                new CborReaderImpl(mDecoderStream, (int) additionalData);
+                                new CborReaderImpl(mDecoderStream, additionalData.intValue());
 
                         while (subparser.hasRemainingDataItems()) {
                             CborObject key = subparser.readDataItem();
@@ -245,7 +220,7 @@ class CborReaderImpl implements CborReader {
                             ret.mapValue().put(key, value);
                         }
 
-                        if ((additionalData == UNSPECIFIED) && mDecoderStream.get() != BREAK) {
+                        if ((additionalData.compareTo(BigInteger.valueOf(UNSPECIFIED)) == 0) && mDecoderStream.get() != BREAK) {
                             throw new CborParseException("Missing break");
                         }
 
@@ -258,21 +233,21 @@ class CborReaderImpl implements CborReader {
                         // Half-precision float
                         if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
                         return CborFloat.createHalf(
-                                Half.shortBitsToFloat((short) additionalData), tag);
+                                Half.shortBitsToFloat(additionalData.shortValue()), tag);
 
                     } else if (additionalInfo == CborFloat.TYPE_FLOAT) {
                         // Full-precision float
                         if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                        return CborFloat.create(Float.intBitsToFloat((int) additionalData), tag);
+                        return CborFloat.create(Float.intBitsToFloat(additionalData.intValue()), tag);
 
                     } else if (additionalInfo == CborFloat.TYPE_DOUBLE) {
                         // Double-precision float
                         if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                        return CborFloat.create(Double.longBitsToDouble(additionalData), tag);
+                        return CborFloat.create(Double.longBitsToDouble(additionalData.longValue()), tag);
 
                     } else {
                         if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                        return CborSimple.create((int) additionalData, tag);
+                        return CborSimple.create(additionalData.intValue(), tag);
                     }
 
                 default:

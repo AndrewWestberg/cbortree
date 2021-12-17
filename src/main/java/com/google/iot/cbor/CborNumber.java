@@ -16,6 +16,8 @@
 
 package com.google.iot.cbor;
 
+import java.math.BigInteger;
+
 /**
  * Interface for CBOR data items representing numbers.
  *
@@ -39,6 +41,8 @@ public interface CborNumber {
      * @return The {@code long} value of this object.
      */
     long longValue();
+
+    BigInteger bigIntegerValue();
 
     /** Returns the value of this data item as a {@code float}. */
     float floatValue();

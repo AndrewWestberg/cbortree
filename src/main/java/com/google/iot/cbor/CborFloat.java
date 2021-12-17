@@ -16,6 +16,8 @@
 
 package com.google.iot.cbor;
 
+import java.math.BigInteger;
+
 /** CBOR floating-point number object interface. */
 public abstract class CborFloat extends CborObject implements CborNumber {
     // Prohibit users from subclassing for now.
@@ -84,6 +86,11 @@ public abstract class CborFloat extends CborObject implements CborNumber {
     @Override
     public final long longValue() {
         return (long) doubleValue();
+    }
+
+    @Override
+    public final BigInteger bigIntegerValue() {
+        return BigInteger.valueOf(longValue());
     }
 
     @Override

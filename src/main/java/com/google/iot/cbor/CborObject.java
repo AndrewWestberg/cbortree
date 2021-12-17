@@ -16,13 +16,17 @@
 
 package com.google.iot.cbor;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigInteger;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.Map;
-import org.checkerframework.checker.nullness.qual.Nullable;
+
+import static com.google.iot.cbor.CborInteger.BI_MAX_8B;
+import static com.google.iot.cbor.CborInteger.BI_MIN_8B;
 
 /**
  * Base class for CBOR data items.
@@ -39,21 +43,32 @@ import org.checkerframework.checker.nullness.qual.Nullable;
  */
 public abstract class CborObject {
     // Prohibit users from subclassing for now.
-    CborObject() {}
+    CborObject() {
+    }
 
-    /** Additional info value for when the subsequent value/size encoding is one byte long. */
+    /**
+     * Additional info value for when the subsequent value/size encoding is one byte long.
+     */
     static final int ADDITIONAL_INFO_EXTRA_1B = 24;
 
-    /** Additional info value for when the subsequent value/size encoding is two bytes long. */
+    /**
+     * Additional info value for when the subsequent value/size encoding is two bytes long.
+     */
     static final int ADDITIONAL_INFO_EXTRA_2B = 25;
 
-    /** Additional info value for when the subsequent value/size encoding is four bytes long. */
+    /**
+     * Additional info value for when the subsequent value/size encoding is four bytes long.
+     */
     static final int ADDITIONAL_INFO_EXTRA_4B = 26;
 
-    /** Additional info value for when the subsequent value/size encoding is eight bytes long. */
+    /**
+     * Additional info value for when the subsequent value/size encoding is eight bytes long.
+     */
     static final int ADDITIONAL_INFO_EXTRA_8B = 27;
 
-    /** Additional info value for when the additional data size is indefinite. */
+    /**
+     * Additional info value for when the additional data size is indefinite.
+     */
     static final int ADDITIONAL_INFO_EXTRA_INDEF = 31;
 
     /**
@@ -61,12 +76,12 @@ public abstract class CborObject {
      *
      * <p>Provided as convenient alternative to using {@link CborReader}.
      *
-     * @param input byte array to parse
+     * @param input  byte array to parse
      * @param offset index of first byte to start parsing
      * @param length the number of bytes to parse
      * @return finished CborObject.
-     * @throws CborParseException if the input data could not be parsed correctly or if there was
-     *     extra data present at the end of {@code input}
+     * @throws CborParseException        if the input data could not be parsed correctly or if there was
+     *                                   extra data present at the end of {@code input}
      * @throws IndexOutOfBoundsException if {@code offset} is out of bounds
      * @see #createFromCborByteArray(byte[])
      * @see CborReader
@@ -165,9 +180,11 @@ public abstract class CborObject {
         }
         if (obj instanceof Float) return CborFloat.create((Float) obj);
         if (obj instanceof Double) return CborFloat.create((Double) obj);
-        if (obj instanceof Integer) return CborInteger.create((Integer) obj);
-        if (obj instanceof Long) return CborInteger.create((Long) obj);
-        if (obj instanceof Short) return CborInteger.create((Short) obj);
+        if (obj instanceof BigInteger && ((BigInteger) obj).compareTo(BI_MAX_8B) <= 0 && ((BigInteger) obj).compareTo(BI_MIN_8B) >= 0)
+            return CborInteger.create((BigInteger) obj);
+        if (obj instanceof Integer) return CborInteger.create(BigInteger.valueOf((Integer) obj));
+        if (obj instanceof Long) return CborInteger.create(BigInteger.valueOf((Long) obj));
+        if (obj instanceof Short) return CborInteger.create(BigInteger.valueOf((Short) obj));
         if (obj instanceof String) return CborTextString.create((String) obj);
         if (obj instanceof byte[]) return CborByteString.create((byte[]) obj);
 
@@ -256,7 +273,7 @@ public abstract class CborObject {
      * <p>If the object is not tagged, returns {@link CborTag#UNTAGGED}.
      *
      * @return a number identifying the tag for this object, or {@link CborTag#UNTAGGED} if
-     *     untagged.
+     * untagged.
      * @see CborTag
      */
     public int getTag() {
@@ -329,7 +346,7 @@ public abstract class CborObject {
      *   <li>{@link CborSimple#TRUE}/{@link CborSimple#FALSE} → {@link Boolean}
      *   <li>Other {@link CborSimple} values → {@code null}
      * </ul>
-     *
+     * <p>
      * The returned value is a wholly independent copy.
      *
      * @see #createFromJavaObject(Object)
@@ -354,7 +371,7 @@ public abstract class CborObject {
      *   <li>{@code toJavaObject(BigInteger.class} would return a {@link BigInteger}
      *   <li>{@code toJavaObject(URI.class} would throw {@link CborConversionException}
      * </ul>
-     *
+     * <p>
      * Whereas this method called an untagged {@link CborByteString} would behave like this:
      *
      * <ul>
@@ -366,9 +383,9 @@ public abstract class CborObject {
      *
      * @param clazz The desired class of the returned object
      * @return a reference to an object of class {@code clazz} or {@code null} if this data item was
-     *     {@link CborSimple#NULL} or {@link CborSimple#UNDEFINED}.
+     * {@link CborSimple#NULL} or {@link CborSimple#UNDEFINED}.
      * @throws CborConversionException if the underlying data item could not be represented as an
-     *     instance of {@code clazz}.
+     *                                 instance of {@code clazz}.
      */
     public abstract <T> T toJavaObject(Class<T> clazz) throws CborConversionException;
 

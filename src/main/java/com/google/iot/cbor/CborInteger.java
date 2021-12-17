@@ -16,42 +16,62 @@
 package com.google.iot.cbor;
 
 import javax.annotation.Nullable;
+import java.math.BigInteger;
 
-/** CBOR integer object interface. */
+/**
+ * CBOR integer object interface.
+ */
 public abstract class CborInteger extends CborObject implements CborNumber {
     // Prohibit users from subclassing for now.
-    CborInteger() {}
+    CborInteger() {
+    }
 
-    public static CborInteger create(long value) {
+    /**
+     * Additional info value for when the subsequent value/size encoding is one byte long.
+     */
+    static final BigInteger BI_ADDITIONAL_INFO_EXTRA_1B = BigInteger.valueOf(24L);
+
+    static final BigInteger BI_MAX_1B = BigInteger.valueOf(0xFFL);
+    static final BigInteger BI_MAX_2B = BigInteger.valueOf(0xFFFFL);
+    static final BigInteger BI_MAX_4B = BigInteger.valueOf(0xFFFFFFFFL);
+    static final BigInteger BI_MAX_8B = new BigInteger("18446744073709551615");
+    static final BigInteger BI_MIN_8B = new BigInteger("-18446744073709551616");
+
+
+
+    public static CborInteger create(Number value) {
         return create(value, CborTag.UNTAGGED);
     }
 
-    public static CborInteger create(long value, int tag) {
+    public static CborInteger create(Number value, int tag) {
         return create(value, tag, null);
     }
 
-    public static CborInteger create(long value, int tag, @Nullable Integer majorType) {
-        return new CborIntegerImpl(value, tag, majorType);
+    public static CborInteger create(Number value, int tag, @Nullable Integer majorType) {
+        if (value.getClass().isAssignableFrom(BigInteger.class)) {
+            return new CborIntegerImpl((BigInteger) value, tag, majorType);
+        }
+        return new CborIntegerImpl(BigInteger.valueOf(value.longValue()), tag, majorType);
     }
 
-    static int calcAdditionalInformation(long val) {
-        if (val < 0) {
-            val = -val - 1;
+    static int calcAdditionalInformation(BigInteger val) {
+        if (val.compareTo(BigInteger.ZERO) < 0) {
+            val = val.negate().subtract(BigInteger.ONE);
         }
 
-        if (val < ADDITIONAL_INFO_EXTRA_1B) {
-            return (byte) val;
+        if (val.compareTo(BI_ADDITIONAL_INFO_EXTRA_1B) < 0) {
+            return val.byteValue();
         }
 
-        if (val <= 0xFFL) {
+        if (val.compareTo(BI_MAX_1B) <= 0) {
             return ADDITIONAL_INFO_EXTRA_1B;
         }
 
-        if (val <= 0xFFFFL) {
+        if (val.compareTo(BI_MAX_2B) <= 0) {
             return ADDITIONAL_INFO_EXTRA_2B;
         }
 
-        if (val <= 0xFFFFFFFFL) {
+        if (val.compareTo(BI_MAX_4B) <= 0) {
             return ADDITIONAL_INFO_EXTRA_4B;
         }
 
@@ -60,12 +80,12 @@ public abstract class CborInteger extends CborObject implements CborNumber {
 
     @Override
     public final int getAdditionalInformation() {
-        return calcAdditionalInformation(longValue());
+        return calcAdditionalInformation(bigIntegerValue());
     }
 
     @Override
     public int getMajorType() {
-        return (longValue() < 0) ? CborMajorType.NEG_INTEGER : CborMajorType.POS_INTEGER;
+        return (bigIntegerValue().compareTo(BigInteger.ZERO) < 0) ? CborMajorType.NEG_INTEGER : CborMajorType.POS_INTEGER;
     }
 
     /**
@@ -105,6 +125,10 @@ public abstract class CborInteger extends CborObject implements CborNumber {
 
     @Override
     public Number toJavaObject() {
+        BigInteger bigIntVal = bigIntegerValue();
+        if (bigIntVal.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0 || bigIntVal.compareTo(BigInteger.valueOf(Long.MIN_VALUE)) < 0) {
+            return bigIntVal;
+        }
         long lval = longValue();
         if ((lval > Integer.MAX_VALUE) || (lval < Integer.MIN_VALUE)) {
             return lval;
@@ -124,6 +148,10 @@ public abstract class CborInteger extends CborObject implements CborNumber {
 
         if (clazz.isAssignableFrom(Double.class)) {
             return clazz.cast(doubleValue());
+        }
+
+        if (clazz.isAssignableFrom(BigInteger.class)) {
+            return clazz.cast(bigIntegerValue());
         }
 
         if (clazz.isAssignableFrom(Long.class)) {
@@ -172,7 +200,7 @@ public abstract class CborInteger extends CborObject implements CborNumber {
 
         if (obj instanceof CborInteger) {
             CborInteger rhs = (CborInteger) obj;
-            return longValue() == rhs.longValue();
+            return bigIntegerValue().compareTo(rhs.bigIntegerValue()) == 0;
         }
 
         if (!(obj instanceof CborNumber)) {
@@ -186,7 +214,7 @@ public abstract class CborInteger extends CborObject implements CborNumber {
         // described in Section 3.6 of RFC7049.
         return longValue() == rhs.longValue()
                 && Double.doubleToRawLongBits(doubleValue())
-                        == Double.doubleToRawLongBits(rhs.doubleValue());
+                == Double.doubleToRawLongBits(rhs.doubleValue());
     }
 
     @Override
@@ -196,13 +224,7 @@ public abstract class CborInteger extends CborObject implements CborNumber {
 
     @Override
     public String toString() {
-        String ret;
-        if(getMajorType() == CborMajorType.POS_INTEGER) {
-            // handle the case of a 64bit unsigned positive integer value
-            ret = Long.toUnsignedString(longValue());
-        } else {
-            ret = Long.toString(longValue());
-        }
+        String ret = bigIntegerValue().toString();
 
         int tag = getTag();
 

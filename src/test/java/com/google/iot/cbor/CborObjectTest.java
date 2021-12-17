@@ -16,15 +16,17 @@
 
 package com.google.iot.cbor;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.json.JSONObject;
+import org.junit.jupiter.api.Test;
 
+import java.math.BigInteger;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.logging.Logger;
-import org.json.JSONObject;
-import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class CborObjectTest extends CborTestBase {
     private static final boolean DEBUG = false;
@@ -64,40 +66,45 @@ public class CborObjectTest extends CborTestBase {
         assertEquals("12345", CborObject.createFromJavaObject(12345).toString());
         assertEquals("12345", CborObject.createFromJavaObject((short) 12345).toString());
         assertEquals("-12345", CborObject.createFromJavaObject(-12345L).toString());
+        assertEquals("18446744073709551615", CborObject.createFromJavaObject(new BigInteger("18446744073709551615")).toString());
+        assertEquals("-18446744073709551616", CborObject.createFromJavaObject(new BigInteger("-18446744073709551616")).toString());
+        assertEquals("2(h'05563918244f3fffff')", CborObject.createFromJavaObject(new BigInteger("98446744073709551615")).toString());
         assertEquals("12345.0_2", CborObject.createFromJavaObject(12345.0f).toString());
         assertEquals("12345.0_3", CborObject.createFromJavaObject(12345.0).toString());
         assertEquals("[]", CborObject.createFromJavaObject(new LinkedList<>()).toString());
         assertEquals("{}", CborObject.createFromJavaObject(new HashMap<>()).toString());
         assertEquals(
                 "h'01020304'",
-                CborObject.createFromJavaObject(new byte[] {0x01, 0x02, 0x03, 0x04}).toString());
+                CborObject.createFromJavaObject(new byte[]{0x01, 0x02, 0x03, 0x04}).toString());
         assertEquals(
                 "[1,2,3,4]",
-                CborObject.createFromJavaObject(new int[] {0x01, 0x02, 0x03, 0x04}).toString());
+                CborObject.createFromJavaObject(new int[]{0x01, 0x02, 0x03, 0x04}).toString());
         assertEquals(
                 "[1,2,3,4]",
-                CborObject.createFromJavaObject(new long[] {0x01, 0x02, 0x03, 0x04}).toString());
+                CborObject.createFromJavaObject(new long[]{0x01, 0x02, 0x03, 0x04}).toString());
         assertEquals(
                 "[1,2,3,4]",
-                CborObject.createFromJavaObject(new short[] {0x01, 0x02, 0x03, 0x04}).toString());
+                CborObject.createFromJavaObject(new short[]{0x01, 0x02, 0x03, 0x04}).toString());
         assertEquals(
                 "[false,true,false,true]",
-                CborObject.createFromJavaObject(new boolean[] {false, true, false, true})
+                CborObject.createFromJavaObject(new boolean[]{false, true, false, true})
                         .toString());
         assertEquals(
                 "[1.0_2,2.0_2,3.0_2,4.0_2]",
-                CborObject.createFromJavaObject(new float[] {1.0f, 2.0f, 3.0f, 4.0f}).toString());
+                CborObject.createFromJavaObject(new float[]{1.0f, 2.0f, 3.0f, 4.0f}).toString());
         assertEquals(
                 "[1.0_3,2.0_3,3.0_3,4.0_3]",
-                CborObject.createFromJavaObject(new double[] {1.0f, 2.0f, 3.0f, 4.0f}).toString());
+                CborObject.createFromJavaObject(new double[]{1.0f, 2.0f, 3.0f, 4.0f}).toString());
         assertEquals(
                 "[1,2,null,4]",
-                CborObject.createFromJavaObject(new Object[] {1, 2, null, 4}).toString());
+                CborObject.createFromJavaObject(new Object[]{1, 2, null, 4}).toString());
     }
 
     @Test
     void testCborToJavaConversion() throws Exception {
         assertEquals(12345, CborInteger.create(12345).toJavaObject());
+        assertEquals(new BigInteger("18446744073709551615"), CborInteger.create(new BigInteger("18446744073709551615")).toJavaObject());
+        assertEquals(new BigInteger("-18446744073709551616"), CborInteger.create(new BigInteger("-18446744073709551616")).toJavaObject());
         assertEquals("hello", CborTextString.create("hello").toJavaObject());
         assertEquals(true, CborObject.createFromJavaObject(true).toJavaObject());
         assertEquals(false, CborObject.createFromJavaObject(false).toJavaObject());
@@ -113,7 +120,7 @@ public class CborObjectTest extends CborTestBase {
                 CborConversionException.class, () -> CborObject.createFromJavaObject(Object.class));
         assertThrows(
                 CborConversionException.class,
-                () -> CborObject.createFromJavaObject(new Object[] {1, 2, null, Object.class}));
+                () -> CborObject.createFromJavaObject(new Object[]{1, 2, null, Object.class}));
     }
 
     @Test

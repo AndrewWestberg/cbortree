@@ -16,6 +16,7 @@
 
 package com.google.iot.cbor;
 
+import java.math.BigInteger;
 import java.net.URI;
 import java.net.URISyntaxException;
 import org.json.JSONObject;
@@ -56,7 +57,7 @@ public abstract class CborTextString extends CborObject {
 
     @Override
     public int getAdditionalInformation() {
-        return CborInteger.calcAdditionalInformation(byteArrayValue().length);
+        return CborInteger.calcAdditionalInformation(BigInteger.valueOf(byteArrayValue().length));
     }
 
     @Override
