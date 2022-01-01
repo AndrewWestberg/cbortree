@@ -22,14 +22,16 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 final class CborArrayImpl extends CborArray {
     private final LinkedList<CborObject> mList = new LinkedList<>();
     private int mTag = CborTag.UNTAGGED;
+    private boolean mIsIndefiniteLength;
 
-    CborArrayImpl(@Nullable Iterable<CborObject> list, int tag) {
+    CborArrayImpl(@Nullable Iterable<CborObject> list, int tag, boolean isIndefiniteLength) {
         mTag = tag;
         if (list != null) {
             for (CborObject obj : list) {
                 add(obj.copy());
             }
         }
+        mIsIndefiniteLength = isIndefiniteLength;
     }
 
     CborArrayImpl() {}
@@ -42,5 +44,10 @@ final class CborArrayImpl extends CborArray {
     @Override
     public List<CborObject> listValue() {
         return mList;
+    }
+
+    @Override
+    public boolean isIndefiniteLength() {
+        return mIsIndefiniteLength;
     }
 }

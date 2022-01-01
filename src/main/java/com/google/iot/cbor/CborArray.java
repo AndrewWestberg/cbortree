@@ -57,7 +57,7 @@ public abstract class CborArray extends CborObject implements Iterable<CborObjec
             throw new IllegalArgumentException("Invalid tag value " + tag);
         }
 
-        return new CborArrayImpl(null, tag);
+        return new CborArrayImpl(null, tag, false);
     }
 
     /**
@@ -84,7 +84,24 @@ public abstract class CborArray extends CborObject implements Iterable<CborObjec
             throw new IllegalArgumentException("Invalid tag value " + tag);
         }
 
-        return new CborArrayImpl(objs, tag);
+        return new CborArrayImpl(objs, tag, false);
+    }
+
+    /**
+     * Creates a tagged {@link CborArray} populated with the given CborObjects. The given
+     * CborObjects are used directly and not deep-copied.
+     *
+     * @param objs iterable object (like a {@link Collection})
+     * @param tag the integer value of the tag
+     * @param isIndefiniteLength The array should be serialized as indefinite length
+     * @return new {@link CborArray} instance
+     */
+    public static CborArray create(Iterable<CborObject> objs, int tag, boolean isIndefiniteLength) {
+        if (!CborTag.isValid(tag)) {
+            throw new IllegalArgumentException("Invalid tag value " + tag);
+        }
+
+        return new CborArrayImpl(objs, tag, isIndefiniteLength);
     }
 
     /**
@@ -309,6 +326,8 @@ public abstract class CborArray extends CborObject implements Iterable<CborObjec
     public final int getAdditionalInformation() {
         return CborInteger.calcAdditionalInformation(BigInteger.valueOf(size()));
     }
+
+    public abstract boolean isIndefiniteLength();
 
     @Override
     public boolean isValidJson() {

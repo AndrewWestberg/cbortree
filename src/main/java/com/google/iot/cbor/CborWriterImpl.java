@@ -23,7 +23,11 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
+import static com.google.iot.cbor.CborObject.ADDITIONAL_INFO_EXTRA_INDEF;
+
 class CborWriterImpl implements CborWriter {
+    private static final byte BREAK = (byte) 0xFF;
+
     private final EncoderStream mEncoderStream;
 
     CborWriterImpl(OutputStream outputStream) {
@@ -118,9 +122,16 @@ class CborWriterImpl implements CborWriter {
 
     @CanIgnoreReturnValue
     private CborWriterImpl writeDataItem(CborArray array) throws IOException {
-        writeCborFullInteger(array.getMajorType(), BigInteger.valueOf(array.size()));
+        if(array.isIndefiniteLength()) {
+            writeCborHeader(array.getMajorType(), ADDITIONAL_INFO_EXTRA_INDEF);
+        } else {
+            writeCborFullInteger(array.getMajorType(), BigInteger.valueOf(array.size()));
+        }
         for (CborObject obj : array) {
             writeDataItem(obj);
+        }
+        if(array.isIndefiniteLength()) {
+            mEncoderStream.put(BREAK);
         }
         return this;
     }

@@ -191,7 +191,8 @@ class CborReaderImpl implements CborReader {
 
                 case CborMajorType.ARRAY:
                     {
-                        CborArray ret = CborArray.create(tag);
+                        boolean isIndefiniteLength = additionalData.compareTo(BigInteger.valueOf(UNSPECIFIED)) == 0;
+                        CborArray ret = CborArray.create(null, tag, isIndefiniteLength);
                         CborReaderImpl subparser =
                                 new CborReaderImpl(mDecoderStream, additionalData.intValue());
                         while (subparser.hasRemainingDataItems()) {
@@ -199,7 +200,7 @@ class CborReaderImpl implements CborReader {
                         }
                         if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
 
-                        if ((additionalData.compareTo(BigInteger.valueOf(UNSPECIFIED)) == 0 && mDecoderStream.get() != BREAK)) {
+                        if (isIndefiniteLength && mDecoderStream.get() != BREAK) {
                             throw new CborParseException("Missing break");
                         }
                         return ret;
