@@ -16,11 +16,13 @@
 
 package com.google.iot.cbor;
 
+import javax.annotation.Nullable;
 import java.util.*;
 
 final class CborMapImpl extends CborMap {
     private final Map<CborObject, CborObject> mMap;
     private int mTag;
+    private boolean mIsIndefiniteLength;
 
     CborMapImpl(int tag) {
         if (!CborTag.isValid(tag)) {
@@ -29,11 +31,22 @@ final class CborMapImpl extends CborMap {
 
         mMap = new LinkedHashMap<>();
         mTag = tag;
+        mIsIndefiniteLength = false;
     }
 
     CborMapImpl(Map<CborObject, CborObject> map, int tag) {
         this(tag);
         mMap.putAll(map);
+        mIsIndefiniteLength = false;
+    }
+
+    CborMapImpl(@Nullable Map<CborObject, CborObject> map, int tag, boolean isIndefiniteLength) {
+        this(tag);
+        if(map != null) {
+            mMap.putAll(map);
+        }
+
+        mIsIndefiniteLength = isIndefiniteLength;
     }
 
     @Override
@@ -44,5 +57,10 @@ final class CborMapImpl extends CborMap {
     @Override
     public Map<CborObject, CborObject> mapValue() {
         return mMap;
+    }
+
+    @Override
+    public boolean isIndefiniteLength() {
+        return mIsIndefiniteLength;
     }
 }

@@ -208,8 +208,9 @@ class CborReaderImpl implements CborReader {
 
                 case CborMajorType.MAP:
                     {
-                        CborMap ret = CborMap.create(tag);
-                        if (additionalData.compareTo(BigInteger.valueOf(UNSPECIFIED)) != 0) {
+                        boolean isIndefiniteLength = additionalData.compareTo(BigInteger.valueOf(UNSPECIFIED)) == 0;
+                        CborMap ret = CborMap.create(null, tag, isIndefiniteLength);
+                        if (!isIndefiniteLength) {
                             additionalData = additionalData.multiply(BigInteger.valueOf(2L));
                         }
                         CborReaderImpl subparser =

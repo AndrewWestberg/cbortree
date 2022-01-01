@@ -17,6 +17,7 @@
 package com.google.iot.cbor;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigInteger;
@@ -122,7 +123,7 @@ class CborWriterImpl implements CborWriter {
 
     @CanIgnoreReturnValue
     private CborWriterImpl writeDataItem(CborArray array) throws IOException {
-        if(array.isIndefiniteLength()) {
+        if (array.isIndefiniteLength()) {
             writeCborHeader(array.getMajorType(), ADDITIONAL_INFO_EXTRA_INDEF);
         } else {
             writeCborFullInteger(array.getMajorType(), BigInteger.valueOf(array.size()));
@@ -130,7 +131,7 @@ class CborWriterImpl implements CborWriter {
         for (CborObject obj : array) {
             writeDataItem(obj);
         }
-        if(array.isIndefiniteLength()) {
+        if (array.isIndefiniteLength()) {
             mEncoderStream.put(BREAK);
         }
         return this;
@@ -169,10 +170,17 @@ class CborWriterImpl implements CborWriter {
 
     @CanIgnoreReturnValue
     private CborWriterImpl writeDataItem(CborMap map) throws IOException {
-        writeCborFullInteger(map.getMajorType(), BigInteger.valueOf(map.mapValue().size()));
+        if (map.isIndefiniteLength()) {
+            writeCborHeader(map.getMajorType(), ADDITIONAL_INFO_EXTRA_INDEF);
+        } else {
+            writeCborFullInteger(map.getMajorType(), BigInteger.valueOf(map.mapValue().size()));
+        }
         for (Map.Entry<CborObject, CborObject> entry : map.mapValue().entrySet()) {
             writeDataItem(entry.getKey());
             writeDataItem(entry.getValue());
+        }
+        if (map.isIndefiniteLength()) {
+            mEncoderStream.put(BREAK);
         }
         return this;
     }
