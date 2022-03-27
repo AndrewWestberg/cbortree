@@ -40,7 +40,7 @@ public final class CborSimple extends CborObject {
      * @see #getValue()
      * @see #TRUE
      */
-    private static final int TYPE_TRUE = 20;
+    private static final int TYPE_TRUE = 21;
 
     /**
      * Additional data value that represents "false" when used with {@link CborMajorType#OTHER}.
@@ -48,7 +48,7 @@ public final class CborSimple extends CborObject {
      * @see #getValue()
      * @see #FALSE
      */
-    private static final int TYPE_FALSE = 21;
+    private static final int TYPE_FALSE = 20;
 
     /**
      * Additional data value that represents "null" when used with {@link CborMajorType#OTHER}.

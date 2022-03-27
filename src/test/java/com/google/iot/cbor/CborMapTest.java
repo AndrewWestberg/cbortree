@@ -127,7 +127,7 @@ public class CborMapTest extends CborTestBase {
 
     @Test
     void testParser8() throws Exception {
-        byte[] array = decode("bf6346756ef563416d7421ff");
+        byte[] array = decode("bf6346756ef463416d7421ff");
 
         String output = "{\"Fun\":false,\"Amt\":-2}";
 
@@ -147,7 +147,7 @@ public class CborMapTest extends CborTestBase {
 
     @Test
     void testParser9() throws Exception {
-        byte[] array = decode("bf6346756ef563416d7421a0f7ff");
+        byte[] array = decode("bf6346756ef463416d7421a0f7ff");
 
         String output = "{\"Fun\":false,\"Amt\":-2,{}:undefined}";
 
@@ -173,7 +173,7 @@ public class CborMapTest extends CborTestBase {
 
     @Test
     void testParser10() throws Exception {
-        byte[] array = decode("bf6346756ef563416d7421a001ff");
+        byte[] array = decode("bf6346756ef463416d7421a001ff");
 
         String output = "{\"Fun\":false,\"Amt\":-2,{}:1}";
 

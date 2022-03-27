@@ -288,7 +288,7 @@ public class CborArrayTest extends CborTestBase {
 
     @Test
     void testSimpleValueArray() {
-        byte[] array = decode("9ff4f5f6f7f0f8ffff");
+        byte[] array = decode("9ff5f4f6f7f0f8ffff");
 
         String output = "[true,false,null,undefined,simple(16),simple(255)]";
 
