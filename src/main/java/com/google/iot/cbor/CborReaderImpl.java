@@ -16,10 +16,12 @@
 
 package com.google.iot.cbor;
 
+import it.unimi.dsi.fastutil.BigArrays;
+import it.unimi.dsi.fastutil.bytes.ByteBigArrays;
+
 import java.io.*;
 import java.math.BigInteger;
 import java.nio.BufferUnderflowException;
-import java.util.Locale;
 import java.util.NoSuchElementException;
 import java.util.logging.Logger;
 
@@ -57,10 +59,9 @@ class CborReaderImpl implements CborReader {
                 return mDecoderStream.hasRemaining() && (mDecoderStream.peek() != BREAK);
             }
             return mRemainingObjects != 0;
-        } catch(EOFException x) {
+        } catch (EOFException x) {
             return false;
-        }
-        catch (IOException x) {
+        } catch (IOException x) {
             x.printStackTrace();
             // We say true here so that we will call readDataItem() and get the exception
             return true;
@@ -139,7 +140,9 @@ class CborReaderImpl implements CborReader {
                             CborObject obj = subparser.readDataItem();
                             if (obj instanceof CborByteString
                                     && obj.getMajorType() == CborMajorType.BYTE_STRING) {
-                                aggregator.write(((CborByteString) obj).byteArrayValue());
+                                for (byte[] ba : ((CborByteString) obj).byteArrayValue()) {
+                                    aggregator.write(ba);
+                                }
                             } else {
                                 throw new CborParseException(
                                         "Unexpected major type in byte string stream");
@@ -151,13 +154,21 @@ class CborReaderImpl implements CborReader {
                             throw new CborParseException("Missing break");
                         }
 
-                        return CborByteString.create(
-                                aggregator.toByteArray(), 0, aggregator.size(), tag);
+                        return CborByteString.wrap(BigArrays.wrap(aggregator.toByteArray()), tag);
                     } else {
-                        byte[] bytes = new byte[additionalData.intValue()];
-                        mDecoderStream.get(bytes);
-                        if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                        return CborByteString.create(bytes, 0, bytes.length, tag);
+                        if (BigInteger.valueOf(additionalData.intValue()).equals(additionalData)) {
+                            // whole thing fits inside a single byte array
+                            byte[] bytes = new byte[additionalData.intValue()];
+                            mDecoderStream.get(bytes);
+                            if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
+                            return CborByteString.wrap(BigArrays.wrap(bytes), tag);
+                        } else {
+                            // cbor byte array is too big to fit in normal byte array
+                            byte[][] bytes = ByteBigArrays.newBigArray(additionalData.longValue());
+                            mDecoderStream.get(bytes);
+                            if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
+                            return CborByteString.wrap(bytes, tag);
+                        }
                     }
 
                 case CborMajorType.TEXT_STRING:
@@ -189,46 +200,44 @@ class CborReaderImpl implements CborReader {
                         return CborTextString.create(bytes, 0, bytes.length, tag);
                     }
 
-                case CborMajorType.ARRAY:
-                    {
-                        boolean isIndefiniteLength = additionalData.compareTo(BigInteger.valueOf(UNSPECIFIED)) == 0;
-                        CborArray ret = CborArray.create(null, tag, isIndefiniteLength);
-                        CborReaderImpl subparser =
-                                new CborReaderImpl(mDecoderStream, additionalData.intValue());
-                        while (subparser.hasRemainingDataItems()) {
-                            ret.add(subparser.readDataItem());
-                        }
-                        if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
+                case CborMajorType.ARRAY: {
+                    boolean isIndefiniteLength = additionalData.compareTo(BigInteger.valueOf(UNSPECIFIED)) == 0;
+                    CborArray ret = CborArray.create(null, tag, isIndefiniteLength);
+                    CborReaderImpl subparser =
+                            new CborReaderImpl(mDecoderStream, additionalData.intValue());
+                    while (subparser.hasRemainingDataItems()) {
+                        ret.add(subparser.readDataItem());
+                    }
+                    if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
 
-                        if (isIndefiniteLength && mDecoderStream.get() != BREAK) {
-                            throw new CborParseException("Missing break");
-                        }
-                        return ret;
+                    if (isIndefiniteLength && mDecoderStream.get() != BREAK) {
+                        throw new CborParseException("Missing break");
+                    }
+                    return ret;
+                }
+
+                case CborMajorType.MAP: {
+                    boolean isIndefiniteLength = additionalData.compareTo(BigInteger.valueOf(UNSPECIFIED)) == 0;
+                    CborMap ret = CborMap.create(null, tag, isIndefiniteLength);
+                    if (!isIndefiniteLength) {
+                        additionalData = additionalData.multiply(BigInteger.valueOf(2L));
+                    }
+                    CborReaderImpl subparser =
+                            new CborReaderImpl(mDecoderStream, additionalData.intValue());
+
+                    while (subparser.hasRemainingDataItems()) {
+                        CborObject key = subparser.readDataItem();
+                        CborObject value = subparser.readDataItem();
+                        ret.mapValue().put(key, value);
                     }
 
-                case CborMajorType.MAP:
-                    {
-                        boolean isIndefiniteLength = additionalData.compareTo(BigInteger.valueOf(UNSPECIFIED)) == 0;
-                        CborMap ret = CborMap.create(null, tag, isIndefiniteLength);
-                        if (!isIndefiniteLength) {
-                            additionalData = additionalData.multiply(BigInteger.valueOf(2L));
-                        }
-                        CborReaderImpl subparser =
-                                new CborReaderImpl(mDecoderStream, additionalData.intValue());
-
-                        while (subparser.hasRemainingDataItems()) {
-                            CborObject key = subparser.readDataItem();
-                            CborObject value = subparser.readDataItem();
-                            ret.mapValue().put(key, value);
-                        }
-
-                        if ((additionalData.compareTo(BigInteger.valueOf(UNSPECIFIED)) == 0) && mDecoderStream.get() != BREAK) {
-                            throw new CborParseException("Missing break");
-                        }
-
-                        if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                        return ret;
+                    if ((additionalData.compareTo(BigInteger.valueOf(UNSPECIFIED)) == 0) && mDecoderStream.get() != BREAK) {
+                        throw new CborParseException("Missing break");
                     }
+
+                    if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
+                    return ret;
+                }
 
                 case CborMajorType.OTHER:
                     if (additionalInfo == CborFloat.TYPE_HALF) {
@@ -257,9 +266,9 @@ class CborReaderImpl implements CborReader {
             }
 
         } catch (EOFException
-                | BufferUnderflowException
-                | NoSuchElementException
-                | IllegalArgumentException x) {
+                 | BufferUnderflowException
+                 | NoSuchElementException
+                 | IllegalArgumentException x) {
             throw new CborParseException("CBOR data is truncated or corrupt", x);
         }
     }

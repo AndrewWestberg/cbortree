@@ -16,10 +16,10 @@
 
 package com.google.iot.cbor;
 
-import java.util.Arrays;
+import it.unimi.dsi.fastutil.BigArrays;
 
 final class CborByteStringImpl extends CborByteString {
-    private final byte[] mByteValue;
+    private final byte[][] mByteValue;
     private final int mTag;
 
     @Override
@@ -27,13 +27,19 @@ final class CborByteStringImpl extends CborByteString {
         return mTag;
     }
 
-    CborByteStringImpl(byte[] array, int offset, int length, int tag) {
+    CborByteStringImpl(byte[][] array, long offset, long length, int tag) {
         mTag = tag;
-        mByteValue = Arrays.copyOfRange(array, offset, offset + length);
+        mByteValue = BigArrays.copy(array, offset, length);
+    }
+
+    CborByteStringImpl(byte[][] array, int tag) {
+        // simple wrap
+        mTag = tag;
+        mByteValue = array;
     }
 
     @Override
-    public byte[] byteArrayValue() {
+    public byte[][] byteArrayValue() {
         return mByteValue;
     }
 }

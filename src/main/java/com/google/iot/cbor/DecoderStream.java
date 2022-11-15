@@ -17,9 +17,15 @@
 package com.google.iot.cbor;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
-import java.io.*;
+import it.unimi.dsi.fastutil.BigArrays;
 
-/** Internal helper class for {@link CborReaderImpl}. */
+import java.io.EOFException;
+import java.io.IOException;
+import java.io.InputStream;
+
+/**
+ * Internal helper class for {@link CborReaderImpl}.
+ */
 interface DecoderStream {
     static DecoderStream create(InputStream inputStream) {
         return new DecoderStream_InputStream(inputStream);
@@ -42,6 +48,13 @@ interface DecoderStream {
     default void get(byte[] x) throws IOException {
         for (int i = 0; i < x.length; ++i) {
             x[i] = get();
+        }
+    }
+
+    default void get(byte[][] x) throws IOException {
+        long length64 = BigArrays.length(x);
+        for (long i = 0L; i < length64; ++i) {
+            BigArrays.set(x, i, get());
         }
     }
 }

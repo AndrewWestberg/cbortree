@@ -41,6 +41,16 @@ interface EncoderStream {
     EncoderStream putLong(long x) throws IOException;
 
     @CanIgnoreReturnValue
+    default EncoderStream put(byte[][] x) throws IOException {
+        for(byte[] ba : x) {
+            for(byte b : ba) {
+                put(b);
+            }
+        }
+        return this;
+    }
+
+    @CanIgnoreReturnValue
     default EncoderStream put(byte[] x) throws IOException {
         for (byte b : x) {
             put(b);

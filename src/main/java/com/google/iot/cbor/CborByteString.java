@@ -16,6 +16,8 @@
 
 package com.google.iot.cbor;
 
+import it.unimi.dsi.fastutil.BigArrays;
+
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Base64;
@@ -26,12 +28,23 @@ public abstract class CborByteString extends CborObject {
     // Prohibit users from subclassing for now.
     CborByteString() {}
 
-    public static CborByteString create(byte[] array, int offset, int length, int tag) {
+    public static CborByteString wrap(byte[][] array, int tag) {
+        if (!CborTag.isValid(tag)) {
+            throw new IllegalArgumentException("Invalid tag value " + tag);
+        }
+        return new CborByteStringImpl(array, tag);
+    }
+
+    public static CborByteString create(byte[][] array, long offset, long length, int tag) {
         if (!CborTag.isValid(tag)) {
             throw new IllegalArgumentException("Invalid tag value " + tag);
         }
 
         return new CborByteStringImpl(array, offset, length, tag);
+    }
+
+    public static CborByteString create(byte[] array, int offset, int length, int tag) {
+        return create(BigArrays.wrap(array), offset, length, tag);
     }
 
     public static CborByteString create(byte[] array, int offset, int length) {
@@ -50,7 +63,7 @@ public abstract class CborByteString extends CborObject {
      *
      * @return the underlying byte array backing this data item.
      */
-    public abstract byte[] byteArrayValue();
+    public abstract byte[][] byteArrayValue();
 
     @Override
     public int getMajorType() {
@@ -77,8 +90,9 @@ public abstract class CborByteString extends CborObject {
 
     private String toBase16String() {
         StringBuilder ret = new StringBuilder();
-        for (byte b : byteArrayValue()) {
-            ret.append(String.format("%02x", b));
+        long length = BigArrays.length(byteArrayValue());
+        for (long i=0L; i < length; ++i) {
+            ret.append(String.format("%02x", BigArrays.get(byteArrayValue(),i)));
         }
         return ret.toString();
     }
@@ -89,14 +103,16 @@ public abstract class CborByteString extends CborObject {
             return "\"" + toBase16String() + "\"";
 
         } else {
-            return "\"" + Base64.getEncoder().encodeToString(byteArrayValue()) + "\"";
+            // FIXME: Only encoding the first segment of data.
+            return "\"" + Base64.getEncoder().encodeToString(byteArrayValue()[0]) + "\"";
         }
     }
 
     @Override
     public byte[] toJavaObject() {
-        byte[] value = byteArrayValue();
-        return Arrays.copyOf(value, value.length);
+        // FIXME: Only encoding the first segment of data.
+        byte[][] value = byteArrayValue();
+        return Arrays.copyOf(value[0], value[0].length);
     }
 
     @Override
@@ -106,13 +122,13 @@ public abstract class CborByteString extends CborObject {
         switch (getTag()) {
             case CborTag.BIGNUM_POS:
                 if (clazz.isAssignableFrom(BigInteger.class)) {
-                    return clazz.cast(new BigInteger(1, byteArrayValue()));
+                    return clazz.cast(new BigInteger(1, byteArrayValue()[0]));
                 }
                 break;
 
             case CborTag.BIGNUM_NEG:
                 if (clazz.isAssignableFrom(BigInteger.class)) {
-                    return clazz.cast(new BigInteger(-1, byteArrayValue()));
+                    return clazz.cast(new BigInteger(-1, byteArrayValue()[0]));
                 }
                 break;
 
@@ -124,7 +140,7 @@ public abstract class CborByteString extends CborObject {
 
             case CborTag.EXPECTED_BASE64:
                 if (clazz.isAssignableFrom(String.class)) {
-                    clazz.cast(Base64.getEncoder().encodeToString(byteArrayValue()));
+                    clazz.cast(Base64.getEncoder().encodeToString(byteArrayValue()[0]));
                 }
                 break;
 
@@ -134,7 +150,7 @@ public abstract class CborByteString extends CborObject {
                     CborObject obj;
 
                     try {
-                        obj = CborObject.createFromCborByteArray(byteArrayValue());
+                        obj = CborObject.createFromCborByteArray(byteArrayValue()[0]);
 
                         if (clazz.isAssignableFrom(obj.getClass())) {
                             return clazz.cast(obj);
@@ -170,13 +186,13 @@ public abstract class CborByteString extends CborObject {
         // then we stand the chance of it being mutated despite this.
         // Because of this we go ahead and make a real copy here, as if
         // we were mutable.
-        final byte[] array = byteArrayValue();
-        return create(array, 0, array.length, getTag());
+        final byte[][] array = byteArrayValue();
+        return create(array, 0L, BigArrays.length(array), getTag());
     }
 
     @Override
     public int hashCode() {
-        return Integer.hashCode(getTag()) * 1337 + Arrays.hashCode(byteArrayValue());
+        return Integer.hashCode(getTag()) * 1337 + Arrays.deepHashCode(byteArrayValue());
     }
 
     @Override
@@ -191,7 +207,7 @@ public abstract class CborByteString extends CborObject {
 
         final CborByteString rhs = (CborByteString) obj;
 
-        return getTag() == rhs.getTag() && Arrays.equals(byteArrayValue(), rhs.byteArrayValue());
+        return getTag() == rhs.getTag() && Arrays.deepEquals(byteArrayValue(), rhs.byteArrayValue());
     }
 
     @Override

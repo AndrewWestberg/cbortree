@@ -17,6 +17,7 @@
 package com.google.iot.cbor;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import it.unimi.dsi.fastutil.BigArrays;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -193,7 +194,7 @@ class CborWriterImpl implements CborWriter {
 
     @CanIgnoreReturnValue
     private CborWriterImpl writeDataItem(CborByteString obj) throws IOException {
-        writeCborFullInteger(obj.getMajorType(), BigInteger.valueOf(obj.byteArrayValue().length));
+        writeCborFullInteger(obj.getMajorType(), BigInteger.valueOf(BigArrays.length(obj.byteArrayValue())));
         mEncoderStream.put(obj.byteArrayValue());
         return this;
     }
