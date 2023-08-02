@@ -21,6 +21,8 @@ import it.unimi.dsi.fastutil.BigArrays;
 final class CborByteStringImpl extends CborByteString {
     private final byte[][] mByteValue;
     private final int mTag;
+    private final boolean mIsIndefiniteLength;
+
 
     @Override
     public int getTag() {
@@ -30,16 +32,23 @@ final class CborByteStringImpl extends CborByteString {
     CborByteStringImpl(byte[][] array, long offset, long length, int tag) {
         mTag = tag;
         mByteValue = BigArrays.copy(array, offset, length);
+        mIsIndefiniteLength = false;
     }
 
-    CborByteStringImpl(byte[][] array, int tag) {
+    CborByteStringImpl(byte[][] array, int tag, boolean isIndefiniteLength) {
         // simple wrap
         mTag = tag;
         mByteValue = array;
+        mIsIndefiniteLength = isIndefiniteLength;
     }
 
     @Override
     public byte[][] byteArrayValue() {
         return mByteValue;
+    }
+
+    @Override
+    public boolean isIndefiniteLength() {
+        return mIsIndefiniteLength;
     }
 }

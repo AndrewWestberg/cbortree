@@ -194,15 +194,35 @@ class CborWriterImpl implements CborWriter {
 
     @CanIgnoreReturnValue
     private CborWriterImpl writeDataItem(CborByteString obj) throws IOException {
-        writeCborFullInteger(obj.getMajorType(), BigInteger.valueOf(BigArrays.length(obj.byteArrayValue())));
-        mEncoderStream.put(obj.byteArrayValue());
+        if(obj.isIndefiniteLength()) {
+            writeCborHeader(obj.getMajorType(), ADDITIONAL_INFO_EXTRA_INDEF);
+            byte[][] chunks = obj.byteArrayValue();
+            for (byte[] chunk : chunks) {
+                writeCborFullInteger(CborMajorType.BYTE_STRING, BigInteger.valueOf(chunk.length));
+                mEncoderStream.put(chunk);
+            }
+            mEncoderStream.put(BREAK);
+        } else {
+            writeCborFullInteger(obj.getMajorType(), BigInteger.valueOf(BigArrays.length(obj.byteArrayValue())));
+            mEncoderStream.put(obj.byteArrayValue());
+        }
         return this;
     }
 
     @CanIgnoreReturnValue
     private CborWriterImpl writeDataItem(CborTextString obj) throws IOException {
-        writeCborFullInteger(obj.getMajorType(), BigInteger.valueOf(obj.byteArrayValue().length));
-        mEncoderStream.put(obj.byteArrayValue());
+        if(obj.isIndefiniteLength()) {
+            writeCborHeader(obj.getMajorType(), ADDITIONAL_INFO_EXTRA_INDEF);
+            byte[][] chunks = obj.byteArrayValue();
+            for (byte[] chunk : chunks) {
+                writeCborFullInteger(CborMajorType.TEXT_STRING, BigInteger.valueOf(chunk.length));
+                mEncoderStream.put(chunk);
+            }
+            mEncoderStream.put(BREAK);
+        } else {
+            writeCborFullInteger(obj.getMajorType(), BigInteger.valueOf(obj.byteArrayValue()[0].length));
+            mEncoderStream.put(obj.byteArrayValue());
+        }
         return this;
     }
 }

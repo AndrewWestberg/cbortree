@@ -16,6 +16,7 @@
 
 package com.google.iot.cbor;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 
 /** CBOR floating-point number object interface. */
@@ -145,10 +146,7 @@ public abstract class CborFloat extends CborObject implements CborNumber {
 
     @Override
     public Number toJavaObject() {
-        if (getAdditionalInformation() == CborFloat.TYPE_DOUBLE) {
-            return doubleValue();
-        }
-        return floatValue();
+        return BigDecimal.valueOf(doubleValue());
     }
 
     @Override

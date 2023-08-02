@@ -28,11 +28,11 @@ public abstract class CborByteString extends CborObject {
     // Prohibit users from subclassing for now.
     CborByteString() {}
 
-    public static CborByteString wrap(byte[][] array, int tag) {
+    public static CborByteString wrap(byte[][] array, int tag, boolean isIndefiniteLength) {
         if (!CborTag.isValid(tag)) {
             throw new IllegalArgumentException("Invalid tag value " + tag);
         }
-        return new CborByteStringImpl(array, tag);
+        return new CborByteStringImpl(array, tag, isIndefiniteLength);
     }
 
     public static CborByteString create(byte[][] array, long offset, long length, int tag) {
@@ -75,6 +75,8 @@ public abstract class CborByteString extends CborObject {
         return CborInteger.calcAdditionalInformation(BigInteger.valueOf(byteArrayValue().length));
     }
 
+    public abstract boolean isIndefiniteLength();
+
     @Override
     public boolean isValidJson() {
         switch (getTag()) {
@@ -90,9 +92,24 @@ public abstract class CborByteString extends CborObject {
 
     private String toBase16String() {
         StringBuilder ret = new StringBuilder();
-        long length = BigArrays.length(byteArrayValue());
-        for (long i=0L; i < length; ++i) {
-            ret.append(String.format("%02x", BigArrays.get(byteArrayValue(),i)));
+        byte[][] value = byteArrayValue();
+        long length = 0L;
+        for (byte[] bytes : value) {
+            length += bytes.length;
+        }
+        if(length < BigArrays.length(value)) {
+            // Not using bigarrays for length calculation
+            for (byte[] bytes : value) {
+                for (byte aByte : bytes) {
+                    ret.append(String.format("%02x", aByte));
+                }
+            }
+        } else {
+            // Using bigarrays for length calculation
+            length = BigArrays.length(value);
+            for (long i=0L; i < length; ++i) {
+                ret.append(String.format("%02x", BigArrays.get(value,i)));
+            }
         }
         return ret.toString();
     }

@@ -26,12 +26,28 @@ public abstract class CborTextString extends CborObject {
     // Prohibit users from subclassing for now.
     CborTextString() {}
 
-    public static CborTextString create(byte[] array, int offset, int length, int tag) {
-        return new CborTextStringImpl(array, offset, length, tag);
+    public static CborTextString create(byte[][] arrays, int[] offsets, int[] lengths, int tag, boolean isIndefiniteLength) {
+        return new CborTextStringImpl(arrays, offsets, lengths, tag, isIndefiniteLength);
+    }
+
+    public static CborTextString create(byte[] array, int offset, int length, int tag, boolean isIndefiniteLength) {
+        byte[][] arrays = new byte[1][];
+        arrays[0] = array;
+        int[] offsets = new int[1];
+        offsets[0] = offset;
+        int[] lengths = new int[1];
+        lengths[0] = length;
+        return new CborTextStringImpl(arrays, offsets, lengths, tag, isIndefiniteLength);
     }
 
     public static CborTextString create(byte[] array, int offset, int length) {
-        return new CborTextStringImpl(array, offset, length, CborTag.UNTAGGED);
+        byte[][] arrays = new byte[1][];
+        arrays[0] = array;
+        int[] offsets = new int[1];
+        offsets[0] = offset;
+        int[] lengths = new int[1];
+        lengths[0] = length;
+        return new CborTextStringImpl(arrays, offsets, lengths, CborTag.UNTAGGED, false);
     }
 
     public static CborTextString create(byte[] array) {
@@ -48,7 +64,7 @@ public abstract class CborTextString extends CborObject {
 
     public abstract String stringValue();
 
-    public abstract byte[] byteArrayValue();
+    public abstract byte[][] byteArrayValue();
 
     @Override
     public final int getMajorType() {
@@ -59,6 +75,8 @@ public abstract class CborTextString extends CborObject {
     public int getAdditionalInformation() {
         return CborInteger.calcAdditionalInformation(BigInteger.valueOf(byteArrayValue().length));
     }
+
+    public abstract boolean isIndefiniteLength();
 
     @Override
     public final boolean isValidJson() {

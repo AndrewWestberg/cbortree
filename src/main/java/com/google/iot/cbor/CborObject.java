@@ -20,6 +20,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
 import java.nio.ByteBuffer;
@@ -180,6 +181,7 @@ public abstract class CborObject {
         }
         if (obj instanceof Float) return CborFloat.create((Float) obj);
         if (obj instanceof Double) return CborFloat.create((Double) obj);
+        if (obj instanceof BigDecimal) return CborFloat.create(((BigDecimal) obj).doubleValue());
         if (obj instanceof BigInteger && ((BigInteger) obj).compareTo(BI_MAX_8B) <= 0 && ((BigInteger) obj).compareTo(BI_MIN_8B) >= 0)
             return CborInteger.create((BigInteger) obj);
         if (obj instanceof Integer) return CborInteger.create(BigInteger.valueOf((Integer) obj));

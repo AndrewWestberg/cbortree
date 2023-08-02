@@ -19,6 +19,7 @@ package com.google.iot.cbor;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.logging.Logger;
 import org.junit.jupiter.api.Test;
 
@@ -55,6 +56,8 @@ public class CborTextStringTest extends CborTestBase {
         CborObject obj = assertParseToString(output, array);
 
         byte[] encoded = obj.toCborByteArray();
+
+        assertArrayEquals(array, encoded);
 
         CborObject obj2 = assertParseToString(output, encoded);
 
@@ -101,6 +104,8 @@ public class CborTextStringTest extends CborTestBase {
 
         byte[] encoded = obj.toCborByteArray();
 
+        assertArrayEquals(array, encoded);
+
         CborObject obj2 = assertParseToString(output, encoded);
 
         assertEquals(obj, obj2);
@@ -131,6 +136,8 @@ public class CborTextStringTest extends CborTestBase {
         CborObject obj = assertParseToString(output, array);
 
         byte[] encoded = obj.toCborByteArray();
+
+        assertArrayEquals(array, encoded);
 
         CborObject obj2 = assertParseToString(output, encoded);
 

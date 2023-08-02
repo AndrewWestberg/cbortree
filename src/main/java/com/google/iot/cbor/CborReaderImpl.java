@@ -17,11 +17,16 @@
 package com.google.iot.cbor;
 
 import it.unimi.dsi.fastutil.BigArrays;
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.bytes.ByteBigArrays;
+import it.unimi.dsi.fastutil.bytes.ByteLists;
 
 import java.io.*;
 import java.math.BigInteger;
 import java.nio.BufferUnderflowException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.NoSuchElementException;
 import java.util.logging.Logger;
 
@@ -133,16 +138,15 @@ class CborReaderImpl implements CborReader {
 
                 case CborMajorType.BYTE_STRING:
                     if (additionalData.compareTo(BigInteger.ZERO) < 0) {
-                        ByteArrayOutputStream aggregator = new ByteArrayOutputStream();
+                        // Indefinite length byte string
+                        ArrayList<byte[]> aggregator = new ArrayList<>();
                         CborReaderImpl subparser =
                                 new CborReaderImpl(mDecoderStream, additionalData.intValue());
                         while (subparser.hasRemainingDataItems()) {
                             CborObject obj = subparser.readDataItem();
                             if (obj instanceof CborByteString
                                     && obj.getMajorType() == CborMajorType.BYTE_STRING) {
-                                for (byte[] ba : ((CborByteString) obj).byteArrayValue()) {
-                                    aggregator.write(ba);
-                                }
+                                aggregator.addAll(Arrays.asList(((CborByteString) obj).byteArrayValue()));
                             } else {
                                 throw new CborParseException(
                                         "Unexpected major type in byte string stream");
@@ -153,33 +157,34 @@ class CborReaderImpl implements CborReader {
                         if (mDecoderStream.get() != BREAK) {
                             throw new CborParseException("Missing break");
                         }
-
-                        return CborByteString.wrap(BigArrays.wrap(aggregator.toByteArray()), tag);
+                        return CborByteString.wrap(aggregator.toArray(new byte[0][]), tag, true);
                     } else {
+                        // Definite length byte string
                         if (BigInteger.valueOf(additionalData.intValue()).equals(additionalData)) {
                             // whole thing fits inside a single byte array
                             byte[] bytes = new byte[additionalData.intValue()];
                             mDecoderStream.get(bytes);
                             if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                            return CborByteString.wrap(BigArrays.wrap(bytes), tag);
+                            return CborByteString.wrap(BigArrays.wrap(bytes), tag, false);
                         } else {
                             // cbor byte array is too big to fit in normal byte array
                             byte[][] bytes = ByteBigArrays.newBigArray(additionalData.longValue());
                             mDecoderStream.get(bytes);
                             if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                            return CborByteString.wrap(bytes, tag);
+                            return CborByteString.wrap(bytes, tag, false);
                         }
                     }
 
                 case CborMajorType.TEXT_STRING:
                     if (additionalData.compareTo(BigInteger.ZERO) < 0) {
-                        ByteArrayOutputStream aggregator = new ByteArrayOutputStream();
+                        // Indefinite length byte string
+                        ArrayList<byte[]> aggregator = new ArrayList<>();
                         CborReaderImpl subparser =
                                 new CborReaderImpl(mDecoderStream, additionalData.intValue());
                         while (subparser.hasRemainingDataItems()) {
                             CborObject obj = subparser.readDataItem();
                             if (obj instanceof CborTextString) {
-                                aggregator.write(((CborTextString) obj).byteArrayValue());
+                                aggregator.addAll(Arrays.asList(((CborTextString) obj).byteArrayValue()));
                             } else {
                                 throw new CborParseException(
                                         "Unexpected major type in text string stream");
@@ -190,14 +195,20 @@ class CborReaderImpl implements CborReader {
                         if (mDecoderStream.get() != BREAK) {
                             throw new CborParseException("Missing break");
                         }
+                        byte[][] bytes = aggregator.toArray(new byte[0][]);
+                        int[] offsets = new int[bytes.length];
+                        int[] lengths = new int[bytes.length];
+                        for (int i = 0; i < bytes.length; i++) {
+                            offsets[i] = 0;
+                            lengths[i] = bytes[i].length;
+                        }
 
-                        return CborTextString.create(
-                                aggregator.toByteArray(), 0, aggregator.size(), tag);
+                        return CborTextString.create(bytes, offsets, lengths, tag, true);
                     } else {
                         byte[] bytes = new byte[additionalData.intValue()];
                         mDecoderStream.get(bytes);
                         if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                        return CborTextString.create(bytes, 0, bytes.length, tag);
+                        return CborTextString.create(bytes, 0, bytes.length, tag, false);
                     }
 
                 case CborMajorType.ARRAY: {

@@ -16,13 +16,16 @@
 
 package com.google.iot.cbor;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 final class CborTextStringImpl extends CborTextString {
     private final String mValue;
-    private final byte[] mByteValue;
+    private final byte[][] mByteValue;
     private final int mTag;
+    private final boolean mIsIndefiniteLength;
 
     @Override
     public int getTag() {
@@ -36,17 +39,30 @@ final class CborTextStringImpl extends CborTextString {
 
         mTag = tag;
         mValue = value;
-        mByteValue = mValue.getBytes(StandardCharsets.UTF_8);
+        mByteValue = new byte[1][];
+        mByteValue[0] = mValue.getBytes(StandardCharsets.UTF_8);
+        mIsIndefiniteLength = false;
     }
 
-    CborTextStringImpl(byte[] array, int offset, int length, int tag) {
+    CborTextStringImpl(byte[][] array, int[] offset, int[] length, int tag, boolean isIndefiniteLength) {
         if (!CborTag.isValid(tag)) {
             throw new IllegalArgumentException("Invalid tag value " + tag);
         }
 
         mTag = tag;
-        mValue = new String(array, offset, length, StandardCharsets.UTF_8);
-        mByteValue = Arrays.copyOfRange(array, offset, offset + length);
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        mByteValue = new byte[array.length][];
+        for (int i = 0; i < array.length; i++) {
+            mByteValue[i] = Arrays.copyOfRange(array[i], offset[i], offset[i] + length[i]);
+            try {
+                baos.write(mByteValue[i]);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        mValue = new String(baos.toByteArray(), StandardCharsets.UTF_8);
+        mIsIndefiniteLength = isIndefiniteLength;
     }
 
     @Override
@@ -55,7 +71,12 @@ final class CborTextStringImpl extends CborTextString {
     }
 
     @Override
-    public byte[] byteArrayValue() {
+    public byte[][] byteArrayValue() {
         return mByteValue;
+    }
+
+    @Override
+    public boolean isIndefiniteLength() {
+        return mIsIndefiniteLength;
     }
 }
