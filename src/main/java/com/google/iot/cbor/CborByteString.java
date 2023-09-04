@@ -204,7 +204,15 @@ public abstract class CborByteString extends CborObject {
         // Because of this we go ahead and make a real copy here, as if
         // we were mutable.
         final byte[][] array = byteArrayValue();
-        return create(array, 0L, BigArrays.length(array), getTag());
+        if(isIndefiniteLength()) {
+            byte[][] copy = new byte[array.length][];
+            for (int i = 0; i < array.length; i++) {
+                copy[i] = Arrays.copyOf(array[i], array[i].length);
+            }
+            return wrap(copy, getTag(), true);
+        } else {
+            return create(array, 0L, BigArrays.length(array), getTag());
+        }
     }
 
     @Override

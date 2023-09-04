@@ -72,6 +72,10 @@ public class CborByteStringTest extends CborTestBase {
         CborObject obj2 = assertParseToString(output, encoded);
 
         assertEquals(obj, obj2);
+
+        CborObject obj3 = obj.copy();
+
+        assertEquals(obj, obj3);
     }
 
     @Test
