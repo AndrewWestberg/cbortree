@@ -67,7 +67,7 @@ class CborReaderImpl implements CborReader {
         } catch (EOFException x) {
             return false;
         } catch (IOException x) {
-            x.printStackTrace();
+            // x.printStackTrace();
             // We say true here so that we will call readDataItem() and get the exception
             return true;
         }
