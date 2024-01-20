@@ -44,14 +44,14 @@ public abstract class CborInteger extends CborObject implements CborNumber {
     }
 
     public static CborInteger create(Number value, int tag) {
-        return create(value, tag, null);
+        return create(value, tag, null, null);
     }
 
-    public static CborInteger create(Number value, int tag, @Nullable Integer majorType) {
+    public static CborInteger create(Number value, int tag, @Nullable Integer majorType, @Nullable Byte additionalInfo) {
         if (value.getClass().isAssignableFrom(BigInteger.class)) {
-            return new CborIntegerImpl((BigInteger) value, tag, majorType);
+            return new CborIntegerImpl((BigInteger) value, tag, majorType, additionalInfo);
         }
-        return new CborIntegerImpl(BigInteger.valueOf(value.longValue()), tag, majorType);
+        return new CborIntegerImpl(BigInteger.valueOf(value.longValue()), tag, majorType, additionalInfo);
     }
 
     static int calcAdditionalInformation(BigInteger val) {
@@ -79,7 +79,7 @@ public abstract class CborInteger extends CborObject implements CborNumber {
     }
 
     @Override
-    public final int getAdditionalInformation() {
+    public int getAdditionalInformation() {
         return calcAdditionalInformation(bigIntegerValue());
     }
 

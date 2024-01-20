@@ -61,11 +61,13 @@ class CborWriterImpl implements CborWriter {
     }
 
     private void writeCborFullInteger(int majorType, BigInteger val) throws IOException {
+        writeCborFullInteger(majorType, val, CborInteger.calcAdditionalInformation(val));
+    }
+
+    private void writeCborFullInteger(int majorType, BigInteger val, int ai) throws IOException {
         if (val.compareTo(BigInteger.ZERO) < 0) {
             throw new IllegalArgumentException("val cannot be negative");
         }
-
-        final int ai = CborInteger.calcAdditionalInformation(val);
 
         writeCborHeader(majorType, ai);
 
@@ -165,7 +167,7 @@ class CborWriterImpl implements CborWriter {
             val = val.negate().subtract(BigInteger.ONE);
         }
 
-        writeCborFullInteger(obj.getMajorType(), val);
+        writeCborFullInteger(obj.getMajorType(), val, obj.getAdditionalInformation());
         return this;
     }
 

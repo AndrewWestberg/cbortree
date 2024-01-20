@@ -134,6 +134,21 @@ public class CborIntegerTest extends CborTestBase {
     }
 
     @Test
+    void testIntegerE2EncodedAsE3() throws Exception {
+        byte[] array = decode("1b00000000001d15b9");
+
+        String output = "1906105";
+
+        CborObject obj = assertParseToString(output, array);
+
+        assertTrue(obj.isValidJson());
+
+        byte[] encoded = obj.toCborByteArray();
+
+        assertArrayEquals(array, encoded);
+    }
+
+    @Test
     void testIntegerE4() throws Exception {
         byte[] array = decode("1903e8");
 

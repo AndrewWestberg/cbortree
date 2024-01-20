@@ -130,11 +130,11 @@ class CborReaderImpl implements CborReader {
 
                 case CborMajorType.POS_INTEGER:
                     if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                    return CborInteger.create(additionalData, tag, CborMajorType.POS_INTEGER);
+                    return CborInteger.create(additionalData, tag, CborMajorType.POS_INTEGER, additionalInfo);
 
                 case CborMajorType.NEG_INTEGER:
                     if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                    return CborInteger.create(BigInteger.valueOf(-1L).subtract(additionalData), tag, CborMajorType.NEG_INTEGER);
+                    return CborInteger.create(BigInteger.valueOf(-1L).subtract(additionalData), tag, CborMajorType.NEG_INTEGER, additionalInfo);
 
                 case CborMajorType.BYTE_STRING:
                     if (additionalData.compareTo(BigInteger.ZERO) < 0) {

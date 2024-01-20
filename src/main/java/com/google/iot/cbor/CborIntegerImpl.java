@@ -23,13 +23,14 @@ final class CborIntegerImpl extends CborInteger {
     private final BigInteger mValue;
     private final int mTag;
     private final Integer mMajorType;
+    private final Byte mAdditionalInfo;
 
     @Override
     public int getTag() {
         return mTag;
     }
 
-    CborIntegerImpl(BigInteger value, int tag, @Nullable Integer majorType) {
+    CborIntegerImpl(BigInteger value, int tag, @Nullable Integer majorType, @Nullable Byte additionalInfo) {
         if (!CborTag.isValid(tag)) {
             throw new IllegalArgumentException("Invalid tag value " + tag);
         }
@@ -37,6 +38,7 @@ final class CborIntegerImpl extends CborInteger {
         mTag = tag;
         mValue = value;
         mMajorType = majorType;
+        mAdditionalInfo = additionalInfo;
     }
 
     @Override
@@ -53,5 +55,11 @@ final class CborIntegerImpl extends CborInteger {
     @Override
     public BigInteger bigIntegerValue() {
         return mValue;
+    }
+
+    @Override
+    public int getAdditionalInformation() {
+        if(mAdditionalInfo != null) return mAdditionalInfo;
+        return super.getAdditionalInformation();
     }
 }
