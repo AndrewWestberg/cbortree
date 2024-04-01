@@ -24,17 +24,33 @@ package com.google.iot.cbor;
  */
 @SuppressWarnings("WeakerAccess")
 public class CborException extends Exception {
+    /**
+     * Constructs a new {@link CborException}.
+     */
     public CborException() {}
 
+    /**
+     * Constructs a new {@link CborException} with the given explanation.
+     * @param explain the explanation
+     */
     public CborException(String explain) {
         super(explain);
     }
 
+    /**
+     * Constructs a new {@link CborException} with the given explanation and cause.
+     * @param explain the explanation
+     * @param t the cause
+     */
     @SuppressWarnings("WeakerAccess")
     public CborException(String explain, Throwable t) {
         super(explain, t);
     }
 
+    /**
+     * Constructs a new {@link CborException} with the given cause.
+     * @param t the cause
+     */
     public CborException(Throwable t) {
         super(t);
     }

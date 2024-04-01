@@ -224,6 +224,7 @@ public abstract class CborArray extends CborObject implements Iterable<CborObjec
      * Creates a {@link CborArray} from a given {@link JSONArray}. The resulting {@link CborArray}
      * is wholly independent from the given {@link JSONArray}.
      *
+     * @param jsonArray the {@link JSONArray} to convert
      * @return new {@link CborArray} instance
      */
     public static CborArray createFromJSONArray(JSONArray jsonArray) {
@@ -327,6 +328,10 @@ public abstract class CborArray extends CborObject implements Iterable<CborObjec
         return CborInteger.calcAdditionalInformation(BigInteger.valueOf(size()));
     }
 
+    /**
+     * Is this array chunked? Chunked arrays are arrays that are serialized with indefinite length.
+     * @return true if the array is chunked, false otherwise
+     */
     public abstract boolean isIndefiniteLength();
 
     @Override
@@ -478,11 +483,9 @@ public abstract class CborArray extends CborObject implements Iterable<CborObjec
             return true;
         }
 
-        if (!(obj instanceof CborArray)) {
+        if (!(obj instanceof CborArray rhs)) {
             return false;
         }
-
-        final CborArray rhs = (CborArray) obj;
 
         return rhs.getTag() == getTag() && listValue().equals(rhs.listValue());
     }

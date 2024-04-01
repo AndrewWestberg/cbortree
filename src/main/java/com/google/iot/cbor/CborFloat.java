@@ -40,6 +40,8 @@ public abstract class CborFloat extends CborObject implements CborNumber {
 
     /**
      * Creates an untagged {@link CborFloat} instance that will be encoded as a two-byte half-float.
+     * @param value the value to create
+     * @return {@link CborFloat}
      */
     public static CborFloat createHalf(float value) {
         return createHalf(value, CborTag.UNTAGGED);
@@ -47,17 +49,29 @@ public abstract class CborFloat extends CborObject implements CborNumber {
 
     /**
      * Creates a tagged {@link CborFloat} instance that will be encoded as a two-byte half-float.
+     * @param value the value to create
+     * @param tag the tag to associate with this half-float
+     * @return {@link CborFloat}
      */
     public static CborFloat createHalf(float value, int tag) {
         return CborFloatImpl.createHalf(value, tag);
     }
 
-    /** Creates an untagged {@link CborFloat} instance that will be encoded as a four-byte float. */
+    /**
+     * Creates an untagged {@link CborFloat} instance that will be encoded as a four-byte float.
+     * @param value the value to create
+     * @return {@link CborFloat}
+     */
     public static CborFloat create(float value) {
         return create(value, CborTag.UNTAGGED);
     }
 
-    /** Creates a tagged {@link CborFloat} instance that will be encoded as a four-byte float. */
+    /**
+     * Creates a tagged {@link CborFloat} instance that will be encoded as a four-byte float.
+     * @param value the value to create
+     * @param tag the tag to associate with this float
+     * @return {@link CborFloat}
+     */
     public static CborFloat create(float value, int tag) {
         return new CborFloatImpl(value, tag);
     }
@@ -65,6 +79,8 @@ public abstract class CborFloat extends CborObject implements CborNumber {
     /**
      * Creates an untagged {@link CborFloat} instance that will be encoded as an eight-byte
      * double-float.
+     * @param value the value to create
+     * @return {@link CborFloat}
      */
     public static CborFloat create(double value) {
         return create(value, CborTag.UNTAGGED);
@@ -73,6 +89,9 @@ public abstract class CborFloat extends CborObject implements CborNumber {
     /**
      * Creates a tagged {@link CborFloat} instance that will be encoded as a eight-byte
      * double-float.
+     * @param value the value to create
+     * @param tag the tag to associate with this double-float
+     * @return {@link CborFloat}
      */
     public static CborFloat create(double value, int tag) {
         return new CborFloatImpl(value, tag);

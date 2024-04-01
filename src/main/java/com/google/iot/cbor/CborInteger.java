@@ -38,15 +38,33 @@ public abstract class CborInteger extends CborObject implements CborNumber {
     static final BigInteger BI_MIN_8B = new BigInteger("-18446744073709551616");
 
 
-
+    /**
+     * Creates a new CborInteger object from the given {@link Number}.
+     * @param value the value to create
+     * @return {@link CborInteger}
+     */
     public static CborInteger create(Number value) {
         return create(value, CborTag.UNTAGGED);
     }
 
+    /**
+     * Creates a new CborInteger object from the given {@link Number} with the given tag.
+     * @param value the value to create
+     * @param tag the tag to associate with this integer
+     * @return {@link CborInteger}
+     */
     public static CborInteger create(Number value, int tag) {
         return create(value, tag, null, null);
     }
 
+    /**
+     * Creates a new CborInteger object from the given {@link Number} with the given tag, major type,
+     * @param value the value to create
+     * @param tag the tag to associate with this integer
+     * @param majorType the major type of the integer
+     * @param additionalInfo the additional info of the integer
+     * @return {@link CborInteger}
+     */
     public static CborInteger create(Number value, int tag, @Nullable Integer majorType, @Nullable Byte additionalInfo) {
         if (value.getClass().isAssignableFrom(BigInteger.class)) {
             return new CborIntegerImpl((BigInteger) value, tag, majorType, additionalInfo);

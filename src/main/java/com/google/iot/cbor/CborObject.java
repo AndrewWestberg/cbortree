@@ -288,6 +288,7 @@ public abstract class CborObject {
      *
      * @see CborMajorType
      * @see #getAdditionalInformation()
+     * @return the major type of this object
      */
     public abstract int getMajorType();
 
@@ -296,6 +297,7 @@ public abstract class CborObject {
      * on the major type. See RFC7049 section 2 for more information.
      *
      * @see #getMajorType()
+     * @return the additional information value of this object
      */
     public abstract int getAdditionalInformation();
 
@@ -352,6 +354,7 @@ public abstract class CborObject {
      * The returned value is a wholly independent copy.
      *
      * @see #createFromJavaObject(Object)
+     * @return a reference to an object representing this data item.
      */
     @Nullable
     public abstract Object toJavaObject();
@@ -383,6 +386,7 @@ public abstract class CborObject {
      *   <li>{@code toJavaObject(URI.class} would throw {@link CborConversionException}
      * </ul>
      *
+     * @param <T>  The desired class of the returned object
      * @param clazz The desired class of the returned object
      * @return a reference to an object of class {@code clazz} or {@code null} if this data item was
      * {@link CborSimple#NULL} or {@link CborSimple#UNDEFINED}.
@@ -406,6 +410,7 @@ public abstract class CborObject {
      * which allows for the use of {@link OutputStream} and {@link ByteBuffer} objects.
      *
      * @see CborWriter
+     * @return a byte array containing the CBOR encoding of this data item.
      */
     public final byte[] toCborByteArray() {
         ByteBuffer byteBuffer = ByteBuffer.allocate(CborWriter.length(this));

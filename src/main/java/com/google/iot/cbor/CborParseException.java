@@ -22,16 +22,32 @@ package com.google.iot.cbor;
  * for {@link CborMap#createFromCborByteArray(byte[])}).
  */
 public class CborParseException extends CborException {
+    /**
+     * Constructs a new {@link CborParseException}.
+     */
     public CborParseException() {}
 
+    /**
+     * Constructs a new {@link CborParseException} with the given explanation.
+     * @param explain the explanation
+     */
     public CborParseException(String explain) {
         super(explain);
     }
 
+    /**
+     * Constructs a new {@link CborParseException} with the given explanation and cause.
+     * @param explain the explanation
+     * @param t the cause
+     */
     public CborParseException(String explain, Throwable t) {
         super(explain, t);
     }
 
+    /**
+     * Constructs a new {@link CborParseException} with the given cause.
+     * @param t the cause
+     */
     public CborParseException(Throwable t) {
         super(t);
     }

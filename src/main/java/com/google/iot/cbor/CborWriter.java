@@ -17,6 +17,7 @@
 package com.google.iot.cbor;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -27,12 +28,20 @@ import java.nio.ByteBuffer;
  * @see CborReader
  */
 public interface CborWriter {
-    /** Creates a {@link CborWriter} instance that writes to an {@link OutputStream}. */
+    /**
+     * Creates a {@link CborWriter} instance that writes to an {@link OutputStream}.
+     * @param outputStream the {@link OutputStream} to write to
+     * @return a {@link CborWriter} instance
+     */
     static CborWriter createFromOutputStream(OutputStream outputStream) {
         return new CborWriterImpl(outputStream);
     }
 
-    /** Creates a {@link CborWriter} instance that writes to a {@link ByteBuffer}. */
+    /**
+     * Creates a {@link CborWriter} instance that writes to a {@link ByteBuffer}.
+     * @param byteBuffer the {@link ByteBuffer} to write to
+     * @return a {@link CborWriter} instance
+     */
     static CborWriter createFromByteBuffer(ByteBuffer byteBuffer) {
         return new CborWriterImpl(byteBuffer);
     }

@@ -141,7 +141,10 @@ public final class CborSimple extends CborObject {
         return (x < ADDITIONAL_INFO_EXTRA_1B) ? x : ADDITIONAL_INFO_EXTRA_1B;
     }
 
-    /** Returns the "simple value" associated with this object. */
+    /**
+     * Returns the "simple value" associated with this object.
+     * @return the "simple value" associated with this object.
+     */
     public int getValue() {
         return mValue;
     }

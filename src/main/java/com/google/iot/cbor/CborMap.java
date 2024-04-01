@@ -17,11 +17,15 @@
 package com.google.iot.cbor;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
-
-import java.math.BigInteger;
-import java.util.*;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+import java.math.BigInteger;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Class for representing CBOR map data items.
@@ -129,6 +133,7 @@ public abstract class CborMap extends CborObject {
      *
      * @param map the {@link Map} to use to pre-populate the entries in the new {@link CborMap}.
      * @param tag the tag to use on the new {@link CborMap} object
+     * @param isIndefiniteLength whether the map is of indefinite length
      * @return the created {@link CborMap} object
      */
     public static CborMap create(Map<CborObject, CborObject> map, int tag, boolean isIndefiniteLength) {
@@ -196,33 +201,68 @@ public abstract class CborMap extends CborObject {
         return create(CborTag.UNTAGGED);
     }
 
+    /**
+     * Get the internal map value.
+     * @return the internal map value
+     */
     public abstract Map<CborObject, CborObject> mapValue();
 
+    /**
+     * Get the number of entries in this map.
+     * @return the number of entries in this map
+     */
     public int size() {
         return mapValue().size();
     }
 
+    /**
+     * Convenience method to determine if this map is empty.
+     * @return true if this map is empty, false otherwise.
+     */
     public boolean isEmpty() {
         return mapValue().isEmpty();
     }
 
+    /**
+     * Remove the given key from this map.
+     * @param key the key to remove
+     * @return the value that was associated with the given key, or null if the key was not present
+     */
+    @Nullable
     @CanIgnoreReturnValue
     public CborObject remove(CborObject key) {
         return mapValue().remove(key);
     }
 
+    /**
+     * Remove all entries from this map.
+     */
     public void clear() {
         mapValue().clear();
     }
 
+    /**
+     * Return the entry set of the underlying map
+     * @return the entry set of the underlying map
+     */
     public Set<Map.Entry<CborObject, CborObject>> entrySet() {
         return mapValue().entrySet();
     }
 
+    /**
+     * Return the key set of the underlying map
+     * @return the key set of the underlying map
+     */
     public Set<CborObject> keySet() {
         return mapValue().keySet();
     }
 
+    /**
+     * Get the value associated with the given key.
+     * @param key the key to look up
+     * @return the value associated with the given key, or null if the key is not present
+     */
+    @Nullable
     public CborObject get(CborObject key) {
         return mapValue().get(key);
     }
@@ -238,7 +278,9 @@ public abstract class CborMap extends CborObject {
      * @see #containsKey(String)
      * @see #remove(String)
      * @see #keySetAsStrings()
+     * @return the {@link CborObject} value, if found. {@code null} otherwise.
      */
+    @Nullable
     public final CborObject get(String key) {
         return mapValue().get(CborTextString.create(key));
     }
@@ -273,6 +315,7 @@ public abstract class CborMap extends CborObject {
      * @see #keySetAsStrings()
      */
     @CanIgnoreReturnValue
+    @Nullable
     public final CborObject put(String key, CborObject value) {
         return mapValue().put(CborTextString.create(key), value);
     }
@@ -289,6 +332,7 @@ public abstract class CborMap extends CborObject {
      * @see #keySetAsStrings()
      */
     @CanIgnoreReturnValue
+    @Nullable
     public final CborObject remove(String key) {
         return mapValue().remove(CborTextString.create(key));
     }
@@ -303,6 +347,7 @@ public abstract class CborMap extends CborObject {
      * @see #put(String, CborObject)
      * @see #get(String)
      * @see #containsKey(String)
+     * @return the key set as standard {@link String} objects.
      */
     public final Set<String> keySetAsStrings() throws CborConversionException {
         Set<String> ret = new HashSet<>();
@@ -339,6 +384,7 @@ public abstract class CborMap extends CborObject {
      * only with {@link String} objects.
      *
      * @throws CborConversionException if not all of the keys are {@link CborTextString} objects.
+     * @return the created {@link Map}{@code <String,Object>} object.
      */
     @SuppressWarnings("unchecked")
     public final Map<String, Object> toNormalMap() throws CborConversionException {
@@ -353,14 +399,21 @@ public abstract class CborMap extends CborObject {
         return CborMajorType.MAP;
     }
 
+    /**
+     * Returns the additional information byte for this map.
+     * @return the additional information byte for this map.
+     */
     @Override
     public final int getAdditionalInformation() {
         return CborInteger.calcAdditionalInformation(BigInteger.valueOf(mapValue().size()));
     }
 
+    /**
+     * Is this map of indefinite length?
+     * @return true if the map is of indefinite length, false otherwise
+     */
     public abstract boolean isIndefiniteLength();
 
-    @SuppressWarnings("unchecked")
     @Override
     public final Map<Object, Object> toJavaObject() {
         final Map<Object, Object> ret = new LinkedHashMap<>();

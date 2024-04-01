@@ -42,12 +42,22 @@ public interface CborNumber {
      */
     long longValue();
 
+    /**
+     * Returns the value of the integer as a {@link BigInteger}.
+     * @return The {@link BigInteger} value of this object.
+     */
     BigInteger bigIntegerValue();
 
-    /** Returns the value of this data item as a {@code float}. */
+    /**
+     * Returns the value of the number as a {@code float}.
+     * @return The {@code float} value of this object.
+     */
     float floatValue();
 
-    /** Returns the value of this data item as a {@code double}. */
+    /**
+     * Returns the value of the number as a {@code double}.
+     * @return The {@code double} value of this object.
+     */
     double doubleValue();
 
     /**

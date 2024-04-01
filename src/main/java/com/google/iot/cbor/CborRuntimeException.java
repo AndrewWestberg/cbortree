@@ -18,16 +18,32 @@ package com.google.iot.cbor;
 
 /** Unchecked exception for CborTree-specific runtime errors. */
 public class CborRuntimeException extends RuntimeException {
+    /**
+     * Constructs a new {@link CborRuntimeException}.
+     */
     public CborRuntimeException() {}
 
+    /**
+     * Constructs a new {@link CborRuntimeException} with the given explanation.
+     * @param explain the explanation
+     */
     public CborRuntimeException(String explain) {
         super(explain);
     }
 
+    /**
+     * Constructs a new {@link CborRuntimeException} with the given explanation and cause.
+     * @param explain the explanation
+     * @param t the cause
+     */
     public CborRuntimeException(String explain, Throwable t) {
         super(explain, t);
     }
 
+    /**
+     * Constructs a new {@link CborRuntimeException} with the given cause.
+     * @param t the cause
+     */
     public CborRuntimeException(Throwable t) {
         super(t);
     }

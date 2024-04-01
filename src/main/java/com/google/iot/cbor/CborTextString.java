@@ -16,20 +16,41 @@
 
 package com.google.iot.cbor;
 
+import org.json.JSONObject;
+
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URISyntaxException;
-import org.json.JSONObject;
 
 /** CBOR text string object interface. */
 public abstract class CborTextString extends CborObject {
     // Prohibit users from subclassing for now.
     CborTextString() {}
 
+    /**
+     * Creates a new {@link CborTextString} instance from the given byte arrays, offsets, lengths, tag,
+     * and indefinite length flag.
+     * @param arrays the byte arrays
+     * @param offsets the offsets
+     * @param lengths the lengths
+     * @param tag the tag
+     * @param isIndefiniteLength the indefinite length flag
+     * @return {@link CborTextString}
+     */
     public static CborTextString create(byte[][] arrays, int[] offsets, int[] lengths, int tag, boolean isIndefiniteLength) {
         return new CborTextStringImpl(arrays, offsets, lengths, tag, isIndefiniteLength);
     }
 
+    /**
+     * Creates a new {@link CborTextString} instance from the given byte array, offset, length, tag, and
+     * indefinite length flag.
+     * @param array the byte array
+     * @param offset the offset
+     * @param length the length
+     * @param tag the tag
+     * @param isIndefiniteLength the indefinite length flag
+     * @return {@link CborTextString}
+     */
     public static CborTextString create(byte[] array, int offset, int length, int tag, boolean isIndefiniteLength) {
         byte[][] arrays = new byte[1][];
         arrays[0] = array;
@@ -40,6 +61,13 @@ public abstract class CborTextString extends CborObject {
         return new CborTextStringImpl(arrays, offsets, lengths, tag, isIndefiniteLength);
     }
 
+    /**
+     * Creates a new {@link CborTextString} instance from the given byte array, offset, and length.
+     * @param array the byte array
+     * @param offset the offset
+     * @param length the length
+     * @return {@link CborTextString}
+     */
     public static CborTextString create(byte[] array, int offset, int length) {
         byte[][] arrays = new byte[1][];
         arrays[0] = array;
@@ -50,20 +78,45 @@ public abstract class CborTextString extends CborObject {
         return new CborTextStringImpl(arrays, offsets, lengths, CborTag.UNTAGGED, false);
     }
 
+    /**
+     * Creates a new {@link CborTextString} instance from the given byte array.
+     * @param array the byte array
+     * @return {@link CborTextString}
+     */
     public static CborTextString create(byte[] array) {
         return create(array, 0, array.length);
     }
 
+    /**
+     * Creates a new {@link CborTextString} instance from the given string and tag.
+     * @param string the string
+     * @param tag the tag
+     * @return {@link CborTextString}
+     */
     public static CborTextString create(String string, int tag) {
         return new CborTextStringImpl(string, tag);
     }
 
+    /**
+     * Creates a new {@link CborTextString} instance from the given string.
+     * @param string the string
+     * @return {@link CborTextString}
+     */
     public static CborTextString create(String string) {
         return new CborTextStringImpl(string, CborTag.UNTAGGED);
     }
 
+    /**
+     * Returns the string representation of this text string.
+     * @return the string representation
+     */
     public abstract String stringValue();
 
+    /**
+     * Returns the byte array representation of this text string. The returned array is a copy of the
+     * internal representation, so it can be modified without affecting this object.
+     * @return the byte array representation
+     */
     public abstract byte[][] byteArrayValue();
 
     @Override
@@ -76,6 +129,10 @@ public abstract class CborTextString extends CborObject {
         return CborInteger.calcAdditionalInformation(BigInteger.valueOf(byteArrayValue().length));
     }
 
+    /**
+     * Is this text string of indefinite length?
+     * @return {@code true} if this text string is of indefinite length, {@code false} otherwise
+     */
     public abstract boolean isIndefiniteLength();
 
     @Override

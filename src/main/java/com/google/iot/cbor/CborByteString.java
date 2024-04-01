@@ -28,6 +28,13 @@ public abstract class CborByteString extends CborObject {
     // Prohibit users from subclassing for now.
     CborByteString() {}
 
+    /**
+     * Creates a new CborByteString object from the given byte array.
+     * @param array the byte array to wrap
+     * @param tag the tag to associate with this byte string
+     * @param isIndefiniteLength whether the byte string is of indefinite length
+     * @return {@link CborByteString}
+     */
     public static CborByteString wrap(byte[][] array, int tag, boolean isIndefiniteLength) {
         if (!CborTag.isValid(tag)) {
             throw new IllegalArgumentException("Invalid tag value " + tag);
@@ -35,6 +42,14 @@ public abstract class CborByteString extends CborObject {
         return new CborByteStringImpl(array, tag, isIndefiniteLength);
     }
 
+    /**
+     * Creates a new CborByteString object from the given byte array.
+     * @param array the byte array to create
+     * @param offset the offset into the byte array
+     * @param length the length of the byte array
+     * @param tag the tag to associate with this byte string
+     * @return {@link CborByteString}
+     */
     public static CborByteString create(byte[][] array, long offset, long length, int tag) {
         if (!CborTag.isValid(tag)) {
             throw new IllegalArgumentException("Invalid tag value " + tag);
@@ -43,14 +58,34 @@ public abstract class CborByteString extends CborObject {
         return new CborByteStringImpl(array, offset, length, tag);
     }
 
+    /**
+     * Creates a new CborByteString object from the given byte array.
+     * @param array the byte array to create
+     * @param offset the offset into the byte array
+     * @param length the length of the byte array
+     * @param tag the tag to associate with this byte string
+     * @return {@link CborByteString}
+     */
     public static CborByteString create(byte[] array, int offset, int length, int tag) {
         return create(BigArrays.wrap(array), offset, length, tag);
     }
 
+    /**
+     * Creates a new CborByteString object from the given byte array.
+     * @param array the byte array to create
+     * @param offset the offset into the byte array
+     * @param length the length of the byte array
+     * @return {@link CborByteString}
+     */
     public static CborByteString create(byte[] array, int offset, int length) {
         return create(array, offset, length, CborTag.UNTAGGED);
     }
 
+    /**
+     * Creates a new CborByteString object from the given byte array.
+     * @param array the byte array to create
+     * @return {@link CborByteString}
+     */
     public static CborByteString create(byte[] array) {
         return create(array, 0, array.length);
     }
@@ -75,6 +110,11 @@ public abstract class CborByteString extends CborObject {
         return CborInteger.calcAdditionalInformation(BigInteger.valueOf(byteArrayValue().length));
     }
 
+    /**
+     * Is this byte string of indefinite length? If so, it will be represented as a sequence of
+     * byte strings.
+     * @return true if the byte string is of indefinite length, false otherwise
+     */
     public abstract boolean isIndefiniteLength();
 
     @Override
