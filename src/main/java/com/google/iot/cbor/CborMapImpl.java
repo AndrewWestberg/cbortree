@@ -20,7 +20,9 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 final class CborMapImpl extends CborMap {
-    private final Map<CborObject, CborObject> mMap;
+    // we use a list of map entries to preserve the order of the keys and to allow for duplicate keys in
+    // non-canonical cbor.
+    private final List<Map.Entry<CborObject, CborObject>> mMap;
     private int mTag;
     private boolean mIsIndefiniteLength;
 
@@ -29,21 +31,21 @@ final class CborMapImpl extends CborMap {
             throw new IllegalArgumentException("Invalid tag value " + tag);
         }
 
-        mMap = new LinkedHashMap<>();
+        mMap = new LinkedList<>();
         mTag = tag;
         mIsIndefiniteLength = false;
     }
 
     CborMapImpl(Map<CborObject, CborObject> map, int tag) {
         this(tag);
-        mMap.putAll(map);
+        mMap.addAll(map.entrySet());
         mIsIndefiniteLength = false;
     }
 
     CborMapImpl(@Nullable Map<CborObject, CborObject> map, int tag, boolean isIndefiniteLength) {
         this(tag);
         if(map != null) {
-            mMap.putAll(map);
+            mMap.addAll(map.entrySet());
         }
 
         mIsIndefiniteLength = isIndefiniteLength;
@@ -55,7 +57,7 @@ final class CborMapImpl extends CborMap {
     }
 
     @Override
-    public Map<CborObject, CborObject> mapValue() {
+    public List<Map.Entry<CborObject, CborObject>> mapValue() {
         return mMap;
     }
 

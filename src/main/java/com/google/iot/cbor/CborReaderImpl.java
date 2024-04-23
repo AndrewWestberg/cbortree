@@ -24,10 +24,7 @@ import it.unimi.dsi.fastutil.bytes.ByteLists;
 import java.io.*;
 import java.math.BigInteger;
 import java.nio.BufferUnderflowException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.NoSuchElementException;
+import java.util.*;
 import java.util.logging.Logger;
 
 class CborReaderImpl implements CborReader {
@@ -239,7 +236,7 @@ class CborReaderImpl implements CborReader {
                     while (subparser.hasRemainingDataItems()) {
                         CborObject key = subparser.readDataItem();
                         CborObject value = subparser.readDataItem();
-                        ret.mapValue().put(key, value);
+                        ret.mapValue().add(new AbstractMap.SimpleEntry<>(key, value));
                     }
 
                     if ((additionalData.compareTo(BigInteger.valueOf(UNSPECIFIED)) == 0) && mDecoderStream.get() != BREAK) {

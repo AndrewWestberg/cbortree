@@ -178,7 +178,7 @@ class CborWriterImpl implements CborWriter {
         } else {
             writeCborFullInteger(map.getMajorType(), BigInteger.valueOf(map.mapValue().size()));
         }
-        for (Map.Entry<CborObject, CborObject> entry : map.mapValue().entrySet()) {
+        for (Map.Entry<CborObject, CborObject> entry : map.mapValue()) {
             writeDataItem(entry.getKey());
             writeDataItem(entry.getValue());
         }

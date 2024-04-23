@@ -22,10 +22,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.math.BigInteger;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Class for representing CBOR map data items.
@@ -95,10 +92,12 @@ public abstract class CborMap extends CborObject {
     public static CborMap createFromJavaObject(Map<?, ?> obj) throws CborConversionException {
         CborMap map = CborMap.create();
         for (Map.Entry<?, ?> entry : ((Map<?, ?>) obj).entrySet()) {
-            map.mapValue()
-                    .put(
+            map.mapValue().add(
+                    new AbstractMap.SimpleEntry<>(
                             CborObject.createFromJavaObject(entry.getKey()),
-                            CborObject.createFromJavaObject(entry.getValue()));
+                            CborObject.createFromJavaObject(entry.getValue())
+                    )
+            );
         }
         return map;
     }
@@ -205,7 +204,7 @@ public abstract class CborMap extends CborObject {
      * Get the internal map value.
      * @return the internal map value
      */
-    public abstract Map<CborObject, CborObject> mapValue();
+    public abstract List<Map.Entry<CborObject, CborObject>> mapValue();
 
     /**
      * Get the number of entries in this map.
@@ -231,7 +230,19 @@ public abstract class CborMap extends CborObject {
     @Nullable
     @CanIgnoreReturnValue
     public CborObject remove(CborObject key) {
-        return mapValue().remove(key);
+        // find all instances of the key and remove them
+        List<Map.Entry<CborObject, CborObject>> toRemove = new ArrayList<>();
+        for (Map.Entry<CborObject, CborObject> entry : mapValue()) {
+            if (entry.getKey().equals(key)) {
+                toRemove.add(entry);
+            }
+        }
+
+        if(mapValue().removeAll(toRemove)) {
+            return key;
+        }
+
+        return null;
     }
 
     /**
@@ -246,7 +257,7 @@ public abstract class CborMap extends CborObject {
      * @return the entry set of the underlying map
      */
     public Set<Map.Entry<CborObject, CborObject>> entrySet() {
-        return mapValue().entrySet();
+        return new HashSet<>(mapValue());
     }
 
     /**
@@ -254,7 +265,12 @@ public abstract class CborMap extends CborObject {
      * @return the key set of the underlying map
      */
     public Set<CborObject> keySet() {
-        return mapValue().keySet();
+        Set<CborObject> keySet = new HashSet<>();
+        for (Map.Entry<CborObject, CborObject> entry : mapValue()) {
+            keySet.add(entry.getKey());
+        }
+
+        return keySet;
     }
 
     /**
@@ -264,7 +280,12 @@ public abstract class CborMap extends CborObject {
      */
     @Nullable
     public CborObject get(CborObject key) {
-        return mapValue().get(key);
+        for (Map.Entry<CborObject, CborObject> entry : mapValue()) {
+            if (entry.getKey().equals(key)) {
+                return entry.getValue();
+            }
+        }
+        return null;
     }
 
     /**
@@ -282,7 +303,15 @@ public abstract class CborMap extends CborObject {
      */
     @Nullable
     public final CborObject get(String key) {
-        return mapValue().get(CborTextString.create(key));
+        for (Map.Entry<CborObject, CborObject> entry : mapValue()) {
+            if (entry.getKey() instanceof CborTextString) {
+                if (((CborTextString) entry.getKey()).stringValue().equals(key)) {
+                    return entry.getValue();
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -298,7 +327,7 @@ public abstract class CborMap extends CborObject {
      * @see #keySetAsStrings()
      */
     public final boolean containsKey(String key) {
-        return mapValue().containsKey(CborTextString.create(key));
+        return get(key) != null;
     }
 
     /**
@@ -317,7 +346,12 @@ public abstract class CborMap extends CborObject {
     @CanIgnoreReturnValue
     @Nullable
     public final CborObject put(String key, CborObject value) {
-        return mapValue().put(CborTextString.create(key), value);
+        CborObject previousValue =  get(key);
+        if (previousValue != null) {
+            remove(key);
+        }
+        mapValue().add(new AbstractMap.SimpleEntry<>(CborTextString.create(key), value));
+        return previousValue;
     }
 
     /**
@@ -334,7 +368,19 @@ public abstract class CborMap extends CborObject {
     @CanIgnoreReturnValue
     @Nullable
     public final CborObject remove(String key) {
-        return mapValue().remove(CborTextString.create(key));
+        List<Map.Entry<CborObject,CborObject>> toRemove = new ArrayList<>();
+        for (Map.Entry<CborObject, CborObject> entry : mapValue()) {
+            if (entry.getKey() instanceof CborTextString) {
+                if (((CborTextString) entry.getKey()).stringValue().equals(key)) {
+                    toRemove.add(entry);
+                }
+            }
+        }
+        if (mapValue().removeAll(toRemove)) {
+            return toRemove.getFirst().getValue();
+        }
+
+        return null;
     }
 
     /**
@@ -351,11 +397,12 @@ public abstract class CborMap extends CborObject {
      */
     public final Set<String> keySetAsStrings() throws CborConversionException {
         Set<String> ret = new HashSet<>();
-        for (CborObject key : mapValue().keySet()) {
-            if (!(key instanceof CborTextString)) {
+        for(Map.Entry<CborObject, CborObject> entry : mapValue()) {
+            if (entry.getKey() instanceof CborTextString) {
+                ret.add(((CborTextString) entry.getKey()).stringValue());
+            } else {
                 throw new CborConversionException("Key is not a string");
             }
-            ret.add(((CborTextString) key).stringValue());
         }
         return ret;
     }
@@ -368,8 +415,8 @@ public abstract class CborMap extends CborObject {
      * @see #keySetAsStrings()
      */
     public final boolean areAllKeysStrings() {
-        for (CborObject key : mapValue().keySet()) {
-            if (!(key instanceof CborTextString)) {
+        for (Map.Entry<CborObject, CborObject> entry : mapValue()) {
+            if (!(entry.getKey() instanceof CborTextString)) {
                 return false;
             }
         }
@@ -418,7 +465,7 @@ public abstract class CborMap extends CborObject {
     public final Map<Object, Object> toJavaObject() {
         final Map<Object, Object> ret = new LinkedHashMap<>();
 
-        for (Map.Entry<CborObject, CborObject> entry : mapValue().entrySet()) {
+        for (Map.Entry<CborObject, CborObject> entry : mapValue()) {
             ret.put(entry.getKey().toJavaObject(), entry.getValue().toJavaObject());
         }
 
@@ -430,7 +477,7 @@ public abstract class CborMap extends CborObject {
         if (clazz.isAssignableFrom(Map.class)) {
             final Map<Object, Object> ret = new LinkedHashMap<>();
 
-            for (Map.Entry<CborObject, CborObject> entry : mapValue().entrySet()) {
+            for (Map.Entry<CborObject, CborObject> entry : mapValue()) {
                 ret.put(
                         entry.getKey().toJavaObject(Object.class),
                         entry.getValue().toJavaObject(Object.class));
@@ -450,15 +497,15 @@ public abstract class CborMap extends CborObject {
     @Override
     public final CborMap copy() {
         CborMap ret = create(getTag());
-        for (Map.Entry<CborObject, CborObject> entry : mapValue().entrySet()) {
-            ret.mapValue().put(entry.getKey().copy(), entry.getValue().copy());
+        for (Map.Entry<CborObject, CborObject> entry : mapValue()) {
+            ret.mapValue().add(new AbstractMap.SimpleEntry<>(entry.getKey().copy(), entry.getValue().copy()));
         }
         return ret;
     }
 
     @Override
     public final boolean isValidJson() {
-        for (Map.Entry<CborObject, CborObject> entry : mapValue().entrySet()) {
+        for (Map.Entry<CborObject, CborObject> entry : mapValue()) {
             if (!(entry.getKey() instanceof CborTextString)) {
                 return false;
             }
@@ -475,7 +522,7 @@ public abstract class CborMap extends CborObject {
     public final String toJsonString() {
         StringBuilder sb = new StringBuilder("{");
         boolean first = true;
-        for (Map.Entry<CborObject, CborObject> entry : mapValue().entrySet()) {
+        for (Map.Entry<CborObject, CborObject> entry : mapValue()) {
             if (first) {
                 first = false;
             } else {
@@ -522,7 +569,7 @@ public abstract class CborMap extends CborObject {
             indentLevel++;
         }
 
-        for (Map.Entry<CborObject, CborObject> entry : mapValue().entrySet()) {
+        for (Map.Entry<CborObject, CborObject> entry : mapValue()) {
             if (first) {
                 first = false;
             } else {

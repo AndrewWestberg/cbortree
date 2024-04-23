@@ -15,7 +15,7 @@ if (!project.hasProperty("isGithubActions")) {
 }
 
 group = "io.newm"
-version = "0.2.0-NEWM-SNAPSHOT"
+version = "0.2.1-NEWM-SNAPSHOT"
 
 java.sourceCompatibility = JavaVersion.VERSION_21
 java.targetCompatibility = JavaVersion.VERSION_21
@@ -147,29 +147,6 @@ tasks.withType<DependencyUpdatesTask> {
         }
     }
 }
-
-//project.tasks.withType<org.jetbrains.kotlin.gradle.tasks.UsesKotlinJavaToolchain>().configureEach {
-//    val service = project.extensions.getByType<JavaToolchainService>()
-//    val customLauncher =
-//        service.launcherFor {
-//            this.languageVersion.set(JavaLanguageVersion.of(JavaVersion.VERSION_21.majorVersion))
-//        }
-//
-//    this.kotlinJavaToolchain.toolchain.use(customLauncher)
-//}
-
-//tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-//    kotlinOptions {
-//        freeCompilerArgs =
-//            listOf(
-//                "-Xjsr305=strict",
-//                "-opt-in=kotlin.RequiresOptIn",
-//                "-opt-in=kotlinx.serialization.ExperimentalSerializationApi",
-//                "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-//            )
-//        jvmTarget = "21"
-//    }
-//}
 
 tasks.withType<Test> {
     maxHeapSize = "8192m"

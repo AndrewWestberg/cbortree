@@ -61,6 +61,22 @@ public class CborMapTest extends CborTestBase {
     }
 
     @Test
+    void testMapWithDuplicateKeys() {
+        byte[] array = decode("a2581cf923673e7bc027eba929a9086b7b04a126a18ef524b41db6fb014a26a14a414c414c415f5445535401581cf923673e7bc027eba929a9086b7b04a126a18ef524b41db6fb014a26a14c4741474147415f544553543201");
+
+        String output = "{h'f923673e7bc027eba929a9086b7b04a126a18ef524b41db6fb014a26':{h'414c414c415f54455354':1},h'f923673e7bc027eba929a9086b7b04a126a18ef524b41db6fb014a26':{h'4741474147415f5445535432':1}}";
+        CborMap obj = (CborMap) assertParseToString(output, array);
+
+        byte[] encoded = obj.toCborByteArray();
+
+        assertArrayEquals(array, encoded);
+
+        assertEquals(2, obj.size());
+        assertFalse(obj.isEmpty());
+        assertFalse(obj.isValidJson());
+    }
+
+    @Test
     void testParser2() {
         byte[] array = decode("a26161016162820203");
 
