@@ -16,7 +16,8 @@
 
 package com.google.iot.cbor;
 
-import javax.annotation.Nullable;
+import org.checkerframework.checker.nullness.qual.Nullable;
+
 import java.util.*;
 
 final class CborMapImpl extends CborMap {
@@ -25,6 +26,9 @@ final class CborMapImpl extends CborMap {
     private final List<Map.Entry<CborObject, CborObject>> mMap;
     private int mTag;
     private boolean mIsIndefiniteLength;
+    @Nullable
+    private Integer mAdditionalInfo;
+
 
     CborMapImpl(int tag) {
         if (!CborTag.isValid(tag)) {
@@ -34,21 +38,24 @@ final class CborMapImpl extends CborMap {
         mMap = new LinkedList<>();
         mTag = tag;
         mIsIndefiniteLength = false;
+        mAdditionalInfo = null;
     }
 
     CborMapImpl(Map<CborObject, CborObject> map, int tag) {
         this(tag);
         mMap.addAll(map.entrySet());
         mIsIndefiniteLength = false;
+        mAdditionalInfo = null;
     }
 
-    CborMapImpl(@Nullable Map<CborObject, CborObject> map, int tag, boolean isIndefiniteLength) {
+    CborMapImpl(@Nullable Map<CborObject, CborObject> map, int tag, boolean isIndefiniteLength, @Nullable Integer additionalInfo) {
         this(tag);
         if(map != null) {
             mMap.addAll(map.entrySet());
         }
 
         mIsIndefiniteLength = isIndefiniteLength;
+        mAdditionalInfo = additionalInfo;
     }
 
     @Override
@@ -64,5 +71,13 @@ final class CborMapImpl extends CborMap {
     @Override
     public boolean isIndefiniteLength() {
         return mIsIndefiniteLength;
+    }
+
+    @Override
+    public int getAdditionalInformation() {
+        if(mAdditionalInfo == null) {
+            return super.getAdditionalInformation();
+        }
+        return mAdditionalInfo;
     }
 }

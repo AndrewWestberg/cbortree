@@ -154,7 +154,7 @@ class CborReaderImpl implements CborReader {
                         if (mDecoderStream.get() != BREAK) {
                             throw new CborParseException("Missing break");
                         }
-                        return CborByteString.wrap(aggregator.toArray(new byte[0][]), tag, true);
+                        return CborByteString.wrap(aggregator.toArray(new byte[0][]), tag, true, null);
                     } else {
                         // Definite length byte string
                         if (BigInteger.valueOf(additionalData.intValue()).equals(additionalData)) {
@@ -162,13 +162,13 @@ class CborReaderImpl implements CborReader {
                             byte[] bytes = new byte[additionalData.intValue()];
                             mDecoderStream.get(bytes);
                             if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                            return CborByteString.wrap(BigArrays.wrap(bytes), tag, false);
+                            return CborByteString.wrap(BigArrays.wrap(bytes), tag, false, (int)additionalInfo);
                         } else {
                             // cbor byte array is too big to fit in normal byte array
                             byte[][] bytes = ByteBigArrays.newBigArray(additionalData.longValue());
                             mDecoderStream.get(bytes);
                             if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                            return CborByteString.wrap(bytes, tag, false);
+                            return CborByteString.wrap(bytes, tag, false, (int)additionalInfo);
                         }
                     }
 
@@ -200,17 +200,22 @@ class CborReaderImpl implements CborReader {
                             lengths[i] = bytes[i].length;
                         }
 
-                        return CborTextString.create(bytes, offsets, lengths, tag, true);
+                        return CborTextString.create(bytes, offsets, lengths, tag, true, null);
                     } else {
                         byte[] bytes = new byte[additionalData.intValue()];
                         mDecoderStream.get(bytes);
                         if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                        return CborTextString.create(bytes, 0, bytes.length, tag, false);
+                        return CborTextString.create(bytes, 0, bytes.length, tag, false, (int)additionalInfo);
                     }
 
                 case CborMajorType.ARRAY: {
                     boolean isIndefiniteLength = additionalData.compareTo(BigInteger.valueOf(UNSPECIFIED)) == 0;
-                    CborArray ret = CborArray.create(null, tag, isIndefiniteLength);
+                    CborArray ret;
+                    if(isIndefiniteLength) {
+                        ret = CborArray.create(null, tag, true, null);
+                    } else {
+                        ret = CborArray.create(null, tag, false, (int)additionalInfo);
+                    }
                     CborReaderImpl subparser =
                             new CborReaderImpl(mDecoderStream, additionalData.intValue());
                     while (subparser.hasRemainingDataItems()) {
@@ -226,8 +231,11 @@ class CborReaderImpl implements CborReader {
 
                 case CborMajorType.MAP: {
                     boolean isIndefiniteLength = additionalData.compareTo(BigInteger.valueOf(UNSPECIFIED)) == 0;
-                    CborMap ret = CborMap.create(null, tag, isIndefiniteLength);
-                    if (!isIndefiniteLength) {
+                    CborMap ret;
+                    if(isIndefiniteLength) {
+                        ret = CborMap.create(null, tag, true, null);
+                    } else {
+                        ret = CborMap.create(null, tag, false, (int)additionalInfo);
                         additionalData = additionalData.multiply(BigInteger.valueOf(2L));
                     }
                     CborReaderImpl subparser =

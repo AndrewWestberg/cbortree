@@ -17,11 +17,14 @@
 package com.google.iot.cbor;
 
 import it.unimi.dsi.fastutil.BigArrays;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 final class CborByteStringImpl extends CborByteString {
     private final byte[][] mByteValue;
     private final int mTag;
     private final boolean mIsIndefiniteLength;
+    @Nullable
+    private final Integer mAdditionalInfo;
 
 
     @Override
@@ -29,17 +32,19 @@ final class CborByteStringImpl extends CborByteString {
         return mTag;
     }
 
-    CborByteStringImpl(byte[][] array, long offset, long length, int tag) {
+    CborByteStringImpl(byte[][] array, long offset, long length, int tag, @Nullable Integer additionalInfo) {
         mTag = tag;
         mByteValue = BigArrays.copy(array, offset, length);
         mIsIndefiniteLength = false;
+        mAdditionalInfo = additionalInfo;
     }
 
-    CborByteStringImpl(byte[][] array, int tag, boolean isIndefiniteLength) {
+    CborByteStringImpl(byte[][] array, int tag, boolean isIndefiniteLength, @Nullable Integer additionalInfo) {
         // simple wrap
         mTag = tag;
         mByteValue = array;
         mIsIndefiniteLength = isIndefiniteLength;
+        mAdditionalInfo = additionalInfo;
     }
 
     @Override
@@ -50,5 +55,13 @@ final class CborByteStringImpl extends CborByteString {
     @Override
     public boolean isIndefiniteLength() {
         return mIsIndefiniteLength;
+    }
+
+    @Override
+    public int getAdditionalInformation() {
+        if(mAdditionalInfo == null) {
+            return super.getAdditionalInformation();
+        }
+        return mAdditionalInfo;
     }
 }

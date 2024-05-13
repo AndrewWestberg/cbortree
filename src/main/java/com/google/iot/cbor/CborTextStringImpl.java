@@ -16,6 +16,8 @@
 
 package com.google.iot.cbor;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -26,6 +28,8 @@ final class CborTextStringImpl extends CborTextString {
     private final byte[][] mByteValue;
     private final int mTag;
     private final boolean mIsIndefiniteLength;
+    @Nullable
+    private final Integer mAdditionalInfo;
 
     @Override
     public int getTag() {
@@ -42,9 +46,10 @@ final class CborTextStringImpl extends CborTextString {
         mByteValue = new byte[1][];
         mByteValue[0] = mValue.getBytes(StandardCharsets.UTF_8);
         mIsIndefiniteLength = false;
+        mAdditionalInfo = null;
     }
 
-    CborTextStringImpl(byte[][] array, int[] offset, int[] length, int tag, boolean isIndefiniteLength) {
+    CborTextStringImpl(byte[][] array, int[] offset, int[] length, int tag, boolean isIndefiniteLength, @Nullable Integer additionalInfo) {
         if (!CborTag.isValid(tag)) {
             throw new IllegalArgumentException("Invalid tag value " + tag);
         }
@@ -61,8 +66,9 @@ final class CborTextStringImpl extends CborTextString {
                 throw new RuntimeException(e);
             }
         }
-        mValue = new String(baos.toByteArray(), StandardCharsets.UTF_8);
+        mValue = baos.toString(StandardCharsets.UTF_8);
         mIsIndefiniteLength = isIndefiniteLength;
+        mAdditionalInfo = additionalInfo;
     }
 
     @Override
@@ -78,5 +84,13 @@ final class CborTextStringImpl extends CborTextString {
     @Override
     public boolean isIndefiniteLength() {
         return mIsIndefiniteLength;
+    }
+
+    @Override
+    public int getAdditionalInformation() {
+        if(mAdditionalInfo == null) {
+            return super.getAdditionalInformation();
+        }
+        return mAdditionalInfo;
     }
 }

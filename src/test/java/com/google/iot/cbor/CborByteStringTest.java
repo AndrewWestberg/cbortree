@@ -102,6 +102,28 @@ public class CborByteStringTest extends CborTestBase {
     }
 
     @Test
+    void testByteStreamWithOverEncodedLength() {
+        // 253 bytes
+        byte[] array = decode("5900fdd8798c4100581c7e616f46171dec57c8b2e496e51cdf555731b884b945fb7a82e401aed87982581c5ac3d4bdca238105a040a565e5d7e734b7c9e1630aec7650e809e34a465351554952541a2e31ac1d1a0007a1201a0007a120d879824040d879821b00171aec3d89415b1b016345785d8a000000d87982d87981581c1509f710a1edbe93d7a016f34c213bed8d0c178bbb57fd63eb679f46d87981d87981d87981581ccaaeb5808e85ad31b57c14ca5dbda6ba8553536da72753bda1e7d8df581c1509f710a1edbe93d7a016f34c213bed8d0c178bbb57fd63eb679f4681581c17979109209d255917b8563d1e50a5be8123d5e283fbc6fbb04550c6");
+
+        String output = "h'd8798c4100581c7e616f46171dec57c8b2e496e51cdf555731b884b945fb7a82e401aed87982581c5ac3d4bdca238105a040a565e5d7e734b7c9e1630aec7650e809e34a465351554952541a2e31ac1d1a0007a1201a0007a120d879824040d879821b00171aec3d89415b1b016345785d8a000000d87982d87981581c1509f710a1edbe93d7a016f34c213bed8d0c178bbb57fd63eb679f46d87981d87981d87981581ccaaeb5808e85ad31b57c14ca5dbda6ba8553536da72753bda1e7d8df581c1509f710a1edbe93d7a016f34c213bed8d0c178bbb57fd63eb679f4681581c17979109209d255917b8563d1e50a5be8123d5e283fbc6fbb04550c6'";
+
+        CborObject obj = assertParseToString(output, array);
+
+        assertFalse(obj.isValidJson());
+
+        byte[] encoded = obj.toCborByteArray();
+
+        CborObject obj2 = assertParseToString(output, encoded);
+
+        assertEquals(obj, obj2);
+
+        assertArrayEquals(array, encoded);
+
+        assertEquals(obj, obj.copy());
+    }
+
+    @Test
     void testByteStream4B() throws Exception {
         byte[] array = decode("4401020304");
 

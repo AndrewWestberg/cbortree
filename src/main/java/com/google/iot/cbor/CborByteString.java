@@ -17,6 +17,7 @@
 package com.google.iot.cbor;
 
 import it.unimi.dsi.fastutil.BigArrays;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.math.BigInteger;
 import java.util.Arrays;
@@ -33,13 +34,14 @@ public abstract class CborByteString extends CborObject {
      * @param array the byte array to wrap
      * @param tag the tag to associate with this byte string
      * @param isIndefiniteLength whether the byte string is of indefinite length
+     * @param additionalInfo the additional information for this byte string
      * @return {@link CborByteString}
      */
-    public static CborByteString wrap(byte[][] array, int tag, boolean isIndefiniteLength) {
+    public static CborByteString wrap(byte[][] array, int tag, boolean isIndefiniteLength, @Nullable Integer additionalInfo) {
         if (!CborTag.isValid(tag)) {
             throw new IllegalArgumentException("Invalid tag value " + tag);
         }
-        return new CborByteStringImpl(array, tag, isIndefiniteLength);
+        return new CborByteStringImpl(array, tag, isIndefiniteLength, additionalInfo);
     }
 
     /**
@@ -55,7 +57,7 @@ public abstract class CborByteString extends CborObject {
             throw new IllegalArgumentException("Invalid tag value " + tag);
         }
 
-        return new CborByteStringImpl(array, offset, length, tag);
+        return new CborByteStringImpl(array, offset, length, tag, null);
     }
 
     /**
@@ -107,7 +109,7 @@ public abstract class CborByteString extends CborObject {
 
     @Override
     public int getAdditionalInformation() {
-        return CborInteger.calcAdditionalInformation(BigInteger.valueOf(byteArrayValue().length));
+        return CborInteger.calcAdditionalInformation(BigInteger.valueOf(BigArrays.length(byteArrayValue())));
     }
 
     /**
@@ -244,14 +246,15 @@ public abstract class CborByteString extends CborObject {
         // Because of this we go ahead and make a real copy here, as if
         // we were mutable.
         final byte[][] array = byteArrayValue();
+        byte[][] copy = new byte[array.length][];
+        for (int i = 0; i < array.length; i++) {
+            copy[i] = Arrays.copyOf(array[i], array[i].length);
+        }
+
         if(isIndefiniteLength()) {
-            byte[][] copy = new byte[array.length][];
-            for (int i = 0; i < array.length; i++) {
-                copy[i] = Arrays.copyOf(array[i], array[i].length);
-            }
-            return wrap(copy, getTag(), true);
+            return wrap(copy, getTag(), true, null);
         } else {
-            return create(array, 0L, BigArrays.length(array), getTag());
+            return wrap(copy, getTag(), false, getAdditionalInformation());
         }
     }
 

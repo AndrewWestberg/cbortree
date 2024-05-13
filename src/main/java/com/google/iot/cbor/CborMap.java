@@ -133,10 +133,11 @@ public abstract class CborMap extends CborObject {
      * @param map the {@link Map} to use to pre-populate the entries in the new {@link CborMap}.
      * @param tag the tag to use on the new {@link CborMap} object
      * @param isIndefiniteLength whether the map is of indefinite length
+     * @param additionalInfo the additional information byte for this map
      * @return the created {@link CborMap} object
      */
-    public static CborMap create(Map<CborObject, CborObject> map, int tag, boolean isIndefiniteLength) {
-        return new CborMapImpl(map, tag, isIndefiniteLength);
+    public static CborMap create(@Nullable Map<CborObject, CborObject> map, int tag, boolean isIndefiniteLength, @Nullable Integer additionalInfo) {
+        return new CborMapImpl(map, tag, isIndefiniteLength, additionalInfo);
     }
 
     /**
@@ -451,7 +452,7 @@ public abstract class CborMap extends CborObject {
      * @return the additional information byte for this map.
      */
     @Override
-    public final int getAdditionalInformation() {
+    public int getAdditionalInformation() {
         return CborInteger.calcAdditionalInformation(BigInteger.valueOf(mapValue().size()));
     }
 

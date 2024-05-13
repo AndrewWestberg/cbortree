@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -57,7 +58,7 @@ public abstract class CborArray extends CborObject implements Iterable<CborObjec
             throw new IllegalArgumentException("Invalid tag value " + tag);
         }
 
-        return new CborArrayImpl(null, tag, false);
+        return new CborArrayImpl(null, tag, false, null);
     }
 
     /**
@@ -84,7 +85,7 @@ public abstract class CborArray extends CborObject implements Iterable<CborObjec
             throw new IllegalArgumentException("Invalid tag value " + tag);
         }
 
-        return new CborArrayImpl(objs, tag, false);
+        return new CborArrayImpl(objs, tag, false, null);
     }
 
     /**
@@ -94,14 +95,15 @@ public abstract class CborArray extends CborObject implements Iterable<CborObjec
      * @param objs iterable object (like a {@link Collection})
      * @param tag the integer value of the tag
      * @param isIndefiniteLength The array should be serialized as indefinite length
+     * @param additionalInfo The additional information for the array
      * @return new {@link CborArray} instance
      */
-    public static CborArray create(Iterable<CborObject> objs, int tag, boolean isIndefiniteLength) {
+    public static CborArray create(@Nullable Iterable<CborObject> objs, int tag, boolean isIndefiniteLength, @Nullable Integer additionalInfo) {
         if (!CborTag.isValid(tag)) {
             throw new IllegalArgumentException("Invalid tag value " + tag);
         }
 
-        return new CborArrayImpl(objs, tag, isIndefiniteLength);
+        return new CborArrayImpl(objs, tag, isIndefiniteLength, additionalInfo);
     }
 
     /**
@@ -324,7 +326,7 @@ public abstract class CborArray extends CborObject implements Iterable<CborObjec
     }
 
     @Override
-    public final int getAdditionalInformation() {
+    public int getAdditionalInformation() {
         return CborInteger.calcAdditionalInformation(BigInteger.valueOf(size()));
     }
 

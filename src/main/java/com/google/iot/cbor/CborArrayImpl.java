@@ -23,8 +23,10 @@ final class CborArrayImpl extends CborArray {
     private final LinkedList<CborObject> mList = new LinkedList<>();
     private int mTag = CborTag.UNTAGGED;
     private boolean mIsIndefiniteLength;
+    @Nullable
+    private final Integer mAdditionalInfo;
 
-    CborArrayImpl(@Nullable Iterable<CborObject> list, int tag, boolean isIndefiniteLength) {
+    CborArrayImpl(@Nullable Iterable<CborObject> list, int tag, boolean isIndefiniteLength, @Nullable Integer additionalInfo) {
         mTag = tag;
         if (list != null) {
             for (CborObject obj : list) {
@@ -32,9 +34,12 @@ final class CborArrayImpl extends CborArray {
             }
         }
         mIsIndefiniteLength = isIndefiniteLength;
+        mAdditionalInfo = additionalInfo;
     }
 
-    CborArrayImpl() {}
+    CborArrayImpl() {
+        mAdditionalInfo = null;
+    }
 
     @Override
     public int getTag() {
@@ -49,5 +54,13 @@ final class CborArrayImpl extends CborArray {
     @Override
     public boolean isIndefiniteLength() {
         return mIsIndefiniteLength;
+    }
+
+    @Override
+    public int getAdditionalInformation() {
+        if(mAdditionalInfo == null) {
+            return super.getAdditionalInformation();
+        }
+        return mAdditionalInfo;
     }
 }

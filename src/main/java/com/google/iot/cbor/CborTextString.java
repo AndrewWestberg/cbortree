@@ -16,6 +16,8 @@
 
 package com.google.iot.cbor;
 
+import it.unimi.dsi.fastutil.BigArrays;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.json.JSONObject;
 
 import java.math.BigInteger;
@@ -35,10 +37,11 @@ public abstract class CborTextString extends CborObject {
      * @param lengths the lengths
      * @param tag the tag
      * @param isIndefiniteLength the indefinite length flag
+     * @param additionalInfo the additional information
      * @return {@link CborTextString}
      */
-    public static CborTextString create(byte[][] arrays, int[] offsets, int[] lengths, int tag, boolean isIndefiniteLength) {
-        return new CborTextStringImpl(arrays, offsets, lengths, tag, isIndefiniteLength);
+    public static CborTextString create(byte[][] arrays, int[] offsets, int[] lengths, int tag, boolean isIndefiniteLength, @Nullable Integer additionalInfo) {
+        return new CborTextStringImpl(arrays, offsets, lengths, tag, isIndefiniteLength, additionalInfo);
     }
 
     /**
@@ -49,16 +52,17 @@ public abstract class CborTextString extends CborObject {
      * @param length the length
      * @param tag the tag
      * @param isIndefiniteLength the indefinite length flag
+     * @param additionalInfo the additional information
      * @return {@link CborTextString}
      */
-    public static CborTextString create(byte[] array, int offset, int length, int tag, boolean isIndefiniteLength) {
+    public static CborTextString create(byte[] array, int offset, int length, int tag, boolean isIndefiniteLength, @Nullable Integer additionalInfo) {
         byte[][] arrays = new byte[1][];
         arrays[0] = array;
         int[] offsets = new int[1];
         offsets[0] = offset;
         int[] lengths = new int[1];
         lengths[0] = length;
-        return new CborTextStringImpl(arrays, offsets, lengths, tag, isIndefiniteLength);
+        return new CborTextStringImpl(arrays, offsets, lengths, tag, isIndefiniteLength, additionalInfo);
     }
 
     /**
@@ -75,7 +79,7 @@ public abstract class CborTextString extends CborObject {
         offsets[0] = offset;
         int[] lengths = new int[1];
         lengths[0] = length;
-        return new CborTextStringImpl(arrays, offsets, lengths, CborTag.UNTAGGED, false);
+        return new CborTextStringImpl(arrays, offsets, lengths, CborTag.UNTAGGED, false, null);
     }
 
     /**
@@ -126,7 +130,7 @@ public abstract class CborTextString extends CborObject {
 
     @Override
     public int getAdditionalInformation() {
-        return CborInteger.calcAdditionalInformation(BigInteger.valueOf(byteArrayValue().length));
+        return CborInteger.calcAdditionalInformation(BigInteger.valueOf(BigArrays.length(byteArrayValue())));
     }
 
     /**

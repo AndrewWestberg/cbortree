@@ -104,24 +104,17 @@ class CborWriterImpl implements CborWriter {
     public CborWriterImpl writeDataItem(CborObject obj) throws IOException {
         writeTag(obj.getTag());
 
-        if (obj instanceof CborArray) {
-            return writeDataItem((CborArray) obj);
-        } else if (obj instanceof CborFloat) {
-            return writeDataItem((CborFloat) obj);
-        } else if (obj instanceof CborInteger) {
-            return writeDataItem((CborInteger) obj);
-        } else if (obj instanceof CborMap) {
-            return writeDataItem((CborMap) obj);
-        } else if (obj instanceof CborTextString) {
-            return writeDataItem((CborTextString) obj);
-        } else if (obj instanceof CborByteString) {
-            return writeDataItem((CborByteString) obj);
-        } else if (obj instanceof CborSimple) {
-            return writeDataItem((CborSimple) obj);
-        } else {
-            throw new CborRuntimeException(
+        return switch (obj) {
+            case CborArray cborObjects -> writeDataItem(cborObjects);
+            case CborFloat cborFloat -> writeDataItem(cborFloat);
+            case CborInteger cborInteger -> writeDataItem(cborInteger);
+            case CborMap cborMap -> writeDataItem(cborMap);
+            case CborTextString cborTextString -> writeDataItem(cborTextString);
+            case CborByteString cborByteString -> writeDataItem(cborByteString);
+            case CborSimple cborSimple -> writeDataItem(cborSimple);
+            default -> throw new CborRuntimeException(
                     "Can't encode \"" + obj + "\" of type " + obj.getClass());
-        }
+        };
     }
 
     @CanIgnoreReturnValue
@@ -129,7 +122,7 @@ class CborWriterImpl implements CborWriter {
         if (array.isIndefiniteLength()) {
             writeCborHeader(array.getMajorType(), ADDITIONAL_INFO_EXTRA_INDEF);
         } else {
-            writeCborFullInteger(array.getMajorType(), BigInteger.valueOf(array.size()));
+            writeCborFullInteger(array.getMajorType(), BigInteger.valueOf(array.size()), array.getAdditionalInformation());
         }
         for (CborObject obj : array) {
             writeDataItem(obj);
@@ -176,7 +169,7 @@ class CborWriterImpl implements CborWriter {
         if (map.isIndefiniteLength()) {
             writeCborHeader(map.getMajorType(), ADDITIONAL_INFO_EXTRA_INDEF);
         } else {
-            writeCborFullInteger(map.getMajorType(), BigInteger.valueOf(map.mapValue().size()));
+            writeCborFullInteger(map.getMajorType(), BigInteger.valueOf(map.mapValue().size()), map.getAdditionalInformation());
         }
         for (Map.Entry<CborObject, CborObject> entry : map.mapValue()) {
             writeDataItem(entry.getKey());
@@ -205,7 +198,7 @@ class CborWriterImpl implements CborWriter {
             }
             mEncoderStream.put(BREAK);
         } else {
-            writeCborFullInteger(obj.getMajorType(), BigInteger.valueOf(BigArrays.length(obj.byteArrayValue())));
+            writeCborFullInteger(obj.getMajorType(), BigInteger.valueOf(BigArrays.length(obj.byteArrayValue())), obj.getAdditionalInformation());
             mEncoderStream.put(obj.byteArrayValue());
         }
         return this;
@@ -222,7 +215,7 @@ class CborWriterImpl implements CborWriter {
             }
             mEncoderStream.put(BREAK);
         } else {
-            writeCborFullInteger(obj.getMajorType(), BigInteger.valueOf(obj.byteArrayValue()[0].length));
+            writeCborFullInteger(obj.getMajorType(), BigInteger.valueOf(obj.byteArrayValue()[0].length), obj.getAdditionalInformation());
             mEncoderStream.put(obj.byteArrayValue());
         }
         return this;
