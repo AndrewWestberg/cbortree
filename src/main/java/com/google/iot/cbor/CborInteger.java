@@ -72,6 +72,10 @@ public abstract class CborInteger extends CborObject implements CborNumber {
         return new CborIntegerImpl(BigInteger.valueOf(value.longValue()), tag, majorType, additionalInfo);
     }
 
+    public static CborInteger create(CborByteString bigNum) {
+        return new CborIntegerImpl(bigNum);
+    }
+
     static int calcAdditionalInformation(BigInteger val) {
         if (val.compareTo(BigInteger.ZERO) < 0) {
             val = val.negate().subtract(BigInteger.ONE);
@@ -113,6 +117,12 @@ public abstract class CborInteger extends CborObject implements CborNumber {
      */
     @Override
     public abstract long longValue();
+
+    /**
+     * Returns the value of the integer as a {@link CborByteString}.
+     * @return The {@link CborByteString} value of this object.
+     */
+    public abstract CborByteString byteString();
 
     @Override
     public final float floatValue() {

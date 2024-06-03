@@ -154,13 +154,30 @@ class CborWriterImpl implements CborWriter {
 
     @CanIgnoreReturnValue
     private CborWriterImpl writeDataItem(CborInteger obj) throws IOException {
-        BigInteger val = obj.bigIntegerValue();
+        CborByteString byteString = obj.byteString();
+        if(byteString != null) {
+            // write the big integer as-is since it's bigger than 64 bits
+            writeDataItem((CborObject) byteString);
+        } else {
+            BigInteger val = obj.bigIntegerValue();
 
-        if (val.compareTo(BigInteger.ZERO) < 0) {
-            val = val.negate().subtract(BigInteger.ONE);
+            if(val.compareTo(CborInteger.BI_MAX_8B) > 0) {
+                // write as a bignum positive byte string
+                byte[] bytes = val.toByteArray();
+                writeDataItem(CborByteString.create(bytes, 0, bytes.length, CborTag.BIGNUM_POS));
+            } else if (val.compareTo(CborInteger.BI_MIN_8B) < 0){
+                // write as a bignum negative byte string
+                val = val.negate().subtract(BigInteger.ONE);
+                byte[] bytes = val.toByteArray();
+                writeDataItem(CborByteString.create(bytes, 0, bytes.length, CborTag.BIGNUM_NEG));
+            } else {
+                // write as a full integer
+                if (val.compareTo(BigInteger.ZERO) < 0) {
+                    val = val.negate().subtract(BigInteger.ONE);
+                }
+                writeCborFullInteger(obj.getMajorType(), val, obj.getAdditionalInformation());
+            }
         }
-
-        writeCborFullInteger(obj.getMajorType(), val, obj.getAdditionalInformation());
         return this;
     }
 

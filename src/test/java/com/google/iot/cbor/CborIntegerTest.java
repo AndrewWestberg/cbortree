@@ -16,8 +16,10 @@
 
 package com.google.iot.cbor;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigInteger;
 import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -44,6 +46,24 @@ public class CborIntegerTest extends CborTestBase {
         byte[] array = decode("d9d9f700");
 
         String output = "55799(0)";
+
+        CborObject obj = assertParseToString(output, array);
+
+        assertTrue(obj.isValidJson());
+
+        byte[] encoded = obj.toCborByteArray();
+
+        assertArrayEquals(array, encoded);
+
+        assertEquals(obj, obj.copy());
+    }
+
+    @Test
+    @Disabled("Tagged tags aren't supported right now")
+    void testDoublelyTaggedInteger() {
+        byte[] array = decode("d9d9f7d9d9f700");
+
+        String output = "55799(55799(0))";
 
         CborObject obj = assertParseToString(output, array);
 
@@ -250,5 +270,80 @@ public class CborIntegerTest extends CborTestBase {
         String output = "10000000000000000000";
 
         CborObject obj = assertParseToString(output, array);
+    }
+
+    @Test
+    void testBigNum() {
+        byte[] array = decode("c249010000000000000000");
+
+        String output = "18446744073709551616";
+
+        CborObject obj = assertParseToString(output, array);
+
+        byte[] encoded = obj.toCborByteArray();
+        assertArrayEquals(array, encoded);
+    }
+
+    @Test
+    void testBigNum2() {
+        CborObject obj = CborInteger.create(new BigInteger("18446744073709551616"));
+
+        String expected = "18446744073709551616";
+        String output = obj.toString();
+        assertEquals(expected, output);
+
+        byte[] array = decode("c249010000000000000000");
+        byte[] encoded = obj.toCborByteArray();
+        assertArrayEquals(array, encoded);
+    }
+
+    @Test
+    void testBigNumTagged() {
+        CborObject obj = CborInteger.create(new BigInteger("18446744073709551616"),1234);
+
+        String expected = "1234(18446744073709551616)";
+        String output = obj.toString();
+        assertEquals(expected, output);
+        byte[] array = decode("d904d2c249010000000000000000");
+        byte[] encoded = obj.toCborByteArray();
+        assertArrayEquals(array, encoded);
+    }
+
+    @Test
+    @Disabled("Tagged bignum decoding isn't supported right now")
+    void testBigNumTagged2() {
+        byte[] array = decode("d904d2c249010000000000000000");
+
+        String output = "1234(18446744073709551616)";
+
+        CborObject obj = assertParseToString(output, array);
+
+        byte[] encoded = obj.toCborByteArray();
+        assertArrayEquals(array, encoded);
+    }
+
+    @Test
+    void testBigNumNegative() {
+        byte[] array = decode("c349010000000000000000");
+
+        String output = "-18446744073709551617";
+
+        CborObject obj = assertParseToString(output, array);
+
+        byte[] encoded = obj.toCborByteArray();
+        assertArrayEquals(array, encoded);
+    }
+
+    @Test
+    void testBigNumNegative2() {
+        CborObject obj = CborInteger.create(new BigInteger("-18446744073709551617"));
+
+        String expected = "-18446744073709551617";
+        String output = obj.toString();
+        assertEquals(expected, output);
+
+        byte[] array = decode("c349010000000000000000");
+        byte[] encoded = obj.toCborByteArray();
+        assertArrayEquals(array, encoded);
     }
 }

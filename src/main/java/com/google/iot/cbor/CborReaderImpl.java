@@ -17,14 +17,18 @@
 package com.google.iot.cbor;
 
 import it.unimi.dsi.fastutil.BigArrays;
-import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.bytes.ByteBigArrays;
-import it.unimi.dsi.fastutil.bytes.ByteLists;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.EOFException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigInteger;
 import java.nio.BufferUnderflowException;
-import java.util.*;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.NoSuchElementException;
 import java.util.logging.Logger;
 
 class CborReaderImpl implements CborReader {
@@ -154,7 +158,12 @@ class CborReaderImpl implements CborReader {
                         if (mDecoderStream.get() != BREAK) {
                             throw new CborParseException("Missing break");
                         }
-                        return CborByteString.wrap(aggregator.toArray(new byte[0][]), tag, true, null);
+                        CborByteString ret = CborByteString.wrap(aggregator.toArray(new byte[0][]), tag, true, null);
+                        if(tag == CborTag.BIGNUM_POS || tag == CborTag.BIGNUM_NEG) {
+                            return CborInteger.create(ret);
+                        } else {
+                            return ret;
+                        }
                     } else {
                         // Definite length byte string
                         if (BigInteger.valueOf(additionalData.intValue()).equals(additionalData)) {
@@ -162,13 +171,23 @@ class CborReaderImpl implements CborReader {
                             byte[] bytes = new byte[additionalData.intValue()];
                             mDecoderStream.get(bytes);
                             if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                            return CborByteString.wrap(BigArrays.wrap(bytes), tag, false, (int)additionalInfo);
+                            CborByteString ret = CborByteString.wrap(BigArrays.wrap(bytes), tag, false, (int)additionalInfo);
+                            if(tag == CborTag.BIGNUM_POS || tag == CborTag.BIGNUM_NEG) {
+                                return CborInteger.create(ret);
+                            } else {
+                                return ret;
+                            }
                         } else {
                             // cbor byte array is too big to fit in normal byte array
                             byte[][] bytes = ByteBigArrays.newBigArray(additionalData.longValue());
                             mDecoderStream.get(bytes);
                             if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                            return CborByteString.wrap(bytes, tag, false, (int)additionalInfo);
+                            CborByteString ret = CborByteString.wrap(bytes, tag, false, (int)additionalInfo);
+                            if(tag == CborTag.BIGNUM_POS || tag == CborTag.BIGNUM_NEG) {
+                                return CborInteger.create(ret);
+                            } else {
+                                return ret;
+                            }
                         }
                     }
 
