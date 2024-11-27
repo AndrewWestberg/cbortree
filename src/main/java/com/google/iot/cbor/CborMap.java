@@ -31,7 +31,8 @@ import java.util.*;
  */
 public abstract class CborMap extends CborObject {
     // Prohibit users from subclassing for now.
-    CborMap() {}
+    CborMap() {
+    }
 
     /**
      * Parses the given CBOR byte array into a {@link CborMap} object. If the data in the byte array
@@ -40,12 +41,12 @@ public abstract class CborMap extends CborObject {
      * CborObject#createFromCborByteArray(byte[], int, int)}, except that it is {@link
      * CborMap}-specific.
      *
-     * @param input CBOR-encoded byte array. Must be a CBOR Map.
+     * @param input  CBOR-encoded byte array. Must be a CBOR Map.
      * @param offset Offset into <code>input</code> to start parsing.
      * @param length the number of bytes to parse
      * @return the created {@link CborMap} object
-     * @throws CborParseException if the input data is corrupt or if the input data doesn't
-     *     represent a CborMap.
+     * @throws CborParseException        if the input data is corrupt or if the input data doesn't
+     *                                   represent a CborMap.
      * @throws IndexOutOfBoundsException if {@code offset} ois out of bounds
      * @see #createFromCborByteArray(byte[])
      * @see CborObject#createFromCborByteArray(byte[], int, int)
@@ -71,7 +72,7 @@ public abstract class CborMap extends CborObject {
      * @param input CBOR-encoded byte array. Must be a CBOR Map.
      * @return the created {@link CborMap} object
      * @throws CborParseException if the input data is corrupt or if the input data doesn't
-     *     represent a CborMap.
+     *                            represent a CborMap.
      * @see #createFromCborByteArray(byte[], int, int)
      * @see CborObject#createFromCborByteArray(byte[])
      */
@@ -87,7 +88,7 @@ public abstract class CborMap extends CborObject {
      * @param obj the map to convert to a {@link CborMap}.
      * @return the created {@link CborMap} object
      * @throws CborConversionException if any of the map's keys or values cannot be represented as a
-     *     {@link CborObject}.
+     *                                 {@link CborObject}.
      */
     public static CborMap createFromJavaObject(Map<?, ?> obj) throws CborConversionException {
         CborMap map = CborMap.create();
@@ -130,10 +131,10 @@ public abstract class CborMap extends CborObject {
      * </code>. The keys and values from <code>map</code> are used directly (they are not
      * deep-copied).
      *
-     * @param map the {@link Map} to use to pre-populate the entries in the new {@link CborMap}.
-     * @param tag the tag to use on the new {@link CborMap} object
+     * @param map                the {@link Map} to use to pre-populate the entries in the new {@link CborMap}.
+     * @param tag                the tag to use on the new {@link CborMap} object
      * @param isIndefiniteLength whether the map is of indefinite length
-     * @param additionalInfo the additional information byte for this map
+     * @param additionalInfo     the additional information byte for this map
      * @return the created {@link CborMap} object
      */
     public static CborMap create(@Nullable Map<CborObject, CborObject> map, int tag, boolean isIndefiniteLength, @Nullable Integer additionalInfo) {
@@ -155,7 +156,7 @@ public abstract class CborMap extends CborObject {
      * Creates a untagged {@link CborMap} object from the given {@link JSONObject}.
      *
      * @param obj the {@link JSONObject} used to pre-populate the entries in the new {@link
-     *     CborMap}.
+     *            CborMap}.
      * @return the created {@link CborMap} object
      */
     public static CborMap createFromJSONObject(JSONObject obj) {
@@ -203,12 +204,19 @@ public abstract class CborMap extends CborObject {
 
     /**
      * Get the internal map value.
+     *
      * @return the internal map value
      */
     public abstract List<Map.Entry<CborObject, CborObject>> mapValue();
 
     /**
+     * null out additional info byte so it is recalculated on next access
+     */
+    public abstract void resetAdditionalInfo();
+
+    /**
      * Get the number of entries in this map.
+     *
      * @return the number of entries in this map
      */
     public int size() {
@@ -217,6 +225,7 @@ public abstract class CborMap extends CborObject {
 
     /**
      * Convenience method to determine if this map is empty.
+     *
      * @return true if this map is empty, false otherwise.
      */
     public boolean isEmpty() {
@@ -225,6 +234,7 @@ public abstract class CborMap extends CborObject {
 
     /**
      * Remove the given key from this map.
+     *
      * @param key the key to remove
      * @return the value that was associated with the given key, or null if the key was not present
      */
@@ -239,7 +249,8 @@ public abstract class CborMap extends CborObject {
             }
         }
 
-        if(mapValue().removeAll(toRemove)) {
+        if (mapValue().removeAll(toRemove)) {
+            resetAdditionalInfo();
             return key;
         }
 
@@ -251,10 +262,12 @@ public abstract class CborMap extends CborObject {
      */
     public void clear() {
         mapValue().clear();
+        resetAdditionalInfo();
     }
 
     /**
      * Return the entry set of the underlying map
+     *
      * @return the entry set of the underlying map
      */
     public Set<Map.Entry<CborObject, CborObject>> entrySet() {
@@ -263,6 +276,7 @@ public abstract class CborMap extends CborObject {
 
     /**
      * Return the key set of the underlying map
+     *
      * @return the key set of the underlying map
      */
     public Set<CborObject> keySet() {
@@ -276,6 +290,7 @@ public abstract class CborMap extends CborObject {
 
     /**
      * Get the value associated with the given key.
+     *
      * @param key the key to look up
      * @return the value associated with the given key, or null if the key is not present
      */
@@ -295,12 +310,12 @@ public abstract class CborMap extends CborObject {
      * CborTextString} objects, only untagged objects will match.
      *
      * @param key the string value to use as a key. i * @return The {@link CborObject} value, if
-     *     found. {@code null} otherwise.
+     *            found. {@code null} otherwise.
+     * @return the {@link CborObject} value, if found. {@code null} otherwise.
      * @see #put(String, CborObject)
      * @see #containsKey(String)
      * @see #remove(String)
      * @see #keySetAsStrings()
-     * @return the {@link CborObject} value, if found. {@code null} otherwise.
      */
     @Nullable
     public final CborObject get(String key) {
@@ -336,7 +351,7 @@ public abstract class CborMap extends CborObject {
      * in the map are all {@link CborTextString}. The given key WILL NOT match tagged {@link
      * CborTextString} objects, only untagged objects will match.
      *
-     * @param key the string value to use as a key.
+     * @param key   the string value to use as a key.
      * @param value the CborObject to associate with this key.
      * @return the previous value associated with key, or null if there was no mapping for key.
      * @see #get(String)
@@ -347,11 +362,33 @@ public abstract class CborMap extends CborObject {
     @CanIgnoreReturnValue
     @Nullable
     public final CborObject put(String key, CborObject value) {
-        CborObject previousValue =  get(key);
+        CborObject previousValue = get(key);
         if (previousValue != null) {
             remove(key);
         }
         mapValue().add(new AbstractMap.SimpleEntry<>(CborTextString.create(key), value));
+        resetAdditionalInfo();
+        return previousValue;
+    }
+
+    /**
+     * Convenience setter method to add a key-value pair to the map.
+     *
+     * @param key   the CborObject value to use as a key.
+     * @param value the CborObject value to associate with this key.
+     * @return the previous value associated with key, or null if there was no mapping for key.
+     * @see #get(CborObject)
+     * @see #remove(CborObject)
+     */
+    @CanIgnoreReturnValue
+    @Nullable
+    public final CborObject put(CborObject key, CborObject value) {
+        CborObject previousValue = get(key);
+        if (previousValue != null) {
+            remove(key);
+        }
+        mapValue().add(new AbstractMap.SimpleEntry<>(key, value));
+        resetAdditionalInfo();
         return previousValue;
     }
 
@@ -369,7 +406,7 @@ public abstract class CborMap extends CborObject {
     @CanIgnoreReturnValue
     @Nullable
     public final CborObject remove(String key) {
-        List<Map.Entry<CborObject,CborObject>> toRemove = new ArrayList<>();
+        List<Map.Entry<CborObject, CborObject>> toRemove = new ArrayList<>();
         for (Map.Entry<CborObject, CborObject> entry : mapValue()) {
             if (entry.getKey() instanceof CborTextString) {
                 if (((CborTextString) entry.getKey()).stringValue().equals(key)) {
@@ -378,6 +415,7 @@ public abstract class CborMap extends CborObject {
             }
         }
         if (mapValue().removeAll(toRemove)) {
+            resetAdditionalInfo();
             return toRemove.getFirst().getValue();
         }
 
@@ -389,16 +427,16 @@ public abstract class CborMap extends CborObject {
      * instances. {@link #areAllKeysStrings()} must return true in order for this method to be
      * usable.
      *
+     * @return the key set as standard {@link String} objects.
      * @throws CborConversionException if there are keys in this map which are not {@link
-     *     CborTextString} instances.
+     *                                 CborTextString} instances.
      * @see #put(String, CborObject)
      * @see #get(String)
      * @see #containsKey(String)
-     * @return the key set as standard {@link String} objects.
      */
     public final Set<String> keySetAsStrings() throws CborConversionException {
         Set<String> ret = new HashSet<>();
-        for(Map.Entry<CborObject, CborObject> entry : mapValue()) {
+        for (Map.Entry<CborObject, CborObject> entry : mapValue()) {
             if (entry.getKey() instanceof CborTextString) {
                 ret.add(((CborTextString) entry.getKey()).stringValue());
             } else {
@@ -412,7 +450,7 @@ public abstract class CborMap extends CborObject {
      * Determines if all of the keys in this map are {@link CborTextString} instances.
      *
      * @return true if all of the keys in this map are {@link CborTextString} instances or if there
-     *     are no entries in this map; false otherwise.
+     * are no entries in this map; false otherwise.
      * @see #keySetAsStrings()
      */
     public final boolean areAllKeysStrings() {
@@ -431,8 +469,8 @@ public abstract class CborMap extends CborObject {
      * CborObject#toJavaObject()} in that this method is guaranteed to return a map that is keyed
      * only with {@link String} objects.
      *
-     * @throws CborConversionException if not all of the keys are {@link CborTextString} objects.
      * @return the created {@link Map}{@code <String,Object>} object.
+     * @throws CborConversionException if not all of the keys are {@link CborTextString} objects.
      */
     @SuppressWarnings("unchecked")
     public final Map<String, Object> toNormalMap() throws CborConversionException {
@@ -449,6 +487,7 @@ public abstract class CborMap extends CborObject {
 
     /**
      * Returns the additional information byte for this map.
+     *
      * @return the additional information byte for this map.
      */
     @Override
@@ -458,6 +497,7 @@ public abstract class CborMap extends CborObject {
 
     /**
      * Is this map of indefinite length?
+     *
      * @return true if the map is of indefinite length, false otherwise
      */
     public abstract boolean isIndefiniteLength();

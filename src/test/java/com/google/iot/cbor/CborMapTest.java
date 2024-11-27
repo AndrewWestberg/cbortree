@@ -16,11 +16,12 @@
 
 package com.google.iot.cbor;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 import java.util.logging.Logger;
-import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 @SuppressWarnings("unused")
 public class CborMapTest extends CborTestBase {
@@ -209,5 +210,21 @@ public class CborMapTest extends CborTestBase {
         assertThrows(
                 CborConversionException.class,
                 () -> CborObject.createFromJavaObject(obj.toJavaObject(String[].class)));
+    }
+
+    @Test
+    void testMapEditing() throws Exception {
+        byte[] array = decode("a0");
+        CborMap obj = (CborMap) assertParseToString("{}", array);
+        assertEquals(0, obj.size());
+
+        byte[] witness = decode("a10081825820e98bc049f662c60c3e1066df75f01e02688c3432765b0ec870463d1f93272523584027bb51002786ec504beefd61fb87e1da0aad1ac3ed2b6772eec5148bd1db8145bdb4235157476133b9b8bc57c12da742ba17f4f4494ac2f649b52ab9e24b1c0d");
+        CborMap witnessMap = (CborMap) CborObject.createFromCborByteArray(witness);
+        CborInteger witnessIndex = CborInteger.create(0);
+        CborObject witnessValue = witnessMap.get(witnessIndex);
+        assert witnessValue != null;
+        obj.put(witnessIndex, witnessValue);
+        byte[] encoded = obj.toCborByteArray();
+        assertArrayEquals(witness, encoded);
     }
 }

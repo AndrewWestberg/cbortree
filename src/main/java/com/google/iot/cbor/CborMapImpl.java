@@ -18,7 +18,9 @@ package com.google.iot.cbor;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-import java.util.*;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
 final class CborMapImpl extends CborMap {
     // we use a list of map entries to preserve the order of the keys and to allow for duplicate keys in
@@ -50,7 +52,7 @@ final class CborMapImpl extends CborMap {
 
     CborMapImpl(@Nullable Map<CborObject, CborObject> map, int tag, boolean isIndefiniteLength, @Nullable Integer additionalInfo) {
         this(tag);
-        if(map != null) {
+        if (map != null) {
             mMap.addAll(map.entrySet());
         }
 
@@ -75,9 +77,14 @@ final class CborMapImpl extends CborMap {
 
     @Override
     public int getAdditionalInformation() {
-        if(mAdditionalInfo == null) {
+        if (mAdditionalInfo == null) {
             return super.getAdditionalInformation();
         }
         return mAdditionalInfo;
+    }
+
+    @Override
+    public void resetAdditionalInfo() {
+        mAdditionalInfo = null;
     }
 }

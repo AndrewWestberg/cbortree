@@ -72,6 +72,11 @@ public abstract class CborInteger extends CborObject implements CborNumber {
         return new CborIntegerImpl(BigInteger.valueOf(value.longValue()), tag, majorType, additionalInfo);
     }
 
+    /**
+     * Creates a new CborInteger object from the given BigInteger bytes. Should be tagged with 2 or 3.
+     * @param bigNum the value to create
+     * @return {@link CborInteger}
+     */
     public static CborInteger create(CborByteString bigNum) {
         return new CborIntegerImpl(bigNum);
     }
