@@ -17,16 +17,16 @@
 package com.google.iot.cbor;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 /**
  * Class for representing CBOR array data items.
@@ -59,6 +59,21 @@ public abstract class CborArray extends CborObject implements Iterable<CborObjec
         }
 
         return new CborArrayImpl(null, tag, false, null);
+    }
+
+    /**
+     * Creates a tagged empty {@link CborArray} with the given additional information.
+     * @param tag the integer value of the tag
+     * @param isIndefiniteLength The array should be serialized as indefinite length
+     * @param additionalInfo The additional information for the array
+     * @return new {@link CborArray} instance
+     */
+    public static CborArray create(int tag, boolean isIndefiniteLength, @Nullable Integer additionalInfo) {
+        if (!CborTag.isValid(tag)) {
+            throw new IllegalArgumentException("Invalid tag value " + tag);
+        }
+
+        return new CborArrayImpl(null, tag, isIndefiniteLength, additionalInfo);
     }
 
     /**
@@ -461,7 +476,7 @@ public abstract class CborArray extends CborObject implements Iterable<CborObjec
     /** Creates an independent, deep copy of this object. */
     @Override
     public CborArray copy() {
-        CborArray ret = create(getTag());
+        CborArray ret = create(getTag(), isIndefiniteLength(), getAdditionalInformation());
         for (CborObject obj : this) {
             ret.add(obj.copy());
         }

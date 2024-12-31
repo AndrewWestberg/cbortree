@@ -16,11 +16,13 @@
 
 package com.google.iot.cbor;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
-import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 @SuppressWarnings({"ConstantConditions", "unused"})
 public class CborArrayTest extends CborTestBase {
@@ -299,5 +301,27 @@ public class CborArrayTest extends CborTestBase {
         byte[] encoded = obj.toCborByteArray();
 
         assertEquals(obj, obj.copy());
+    }
+
+    @Test
+    void testInternalIndefiniteArray() {
+        byte[] array = decode("d8799f00d87980ff");
+
+        String output = "121([0,121([])])";
+
+        CborObject obj = assertParseToString(output, array);
+
+        assertTrue(obj.isValidJson());
+
+        byte[] encoded = obj.toCborByteArray();
+
+        assertArrayEquals(array, encoded);
+
+        byte[] wrapperArray = decode("d9010281d8799f00d87980ff");
+        CborArray wrapper = CborArray.create(Collections.singletonList(obj), 258);
+        assertTrue(wrapper.isValidJson());
+
+        byte[] wrapperEncoded = wrapper.toCborByteArray();
+        assertArrayEquals(wrapperArray, wrapperEncoded);
     }
 }
