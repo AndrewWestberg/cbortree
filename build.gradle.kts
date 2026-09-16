@@ -1,17 +1,11 @@
 import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
-import org.hibernate.build.publish.auth.maven.MavenRepoAuthPlugin
+import org.gradle.api.credentials.PasswordCredentials
 
 plugins {
     java
-    id("com.github.ben-manes.versions") version Versions.VERSIONS_PLUGIN
+    id("io.github.ben-manes.versions") version Versions.VERSIONS_PLUGIN
     id("maven-publish")
     id("signing")
-    id("org.hibernate.build.maven-repo-auth") version Versions.MAVEN_REPO_AUTH_PLUGIN apply false
-}
-
-if (!project.hasProperty("isGithubActions")) {
-    // only use this plugin if we're running locally, not on github.
-    apply<MavenRepoAuthPlugin>()
 }
 
 group = "io.newm"
@@ -33,24 +27,20 @@ dependencies {
 
     testImplementation("com.google.truth:truth:${Versions.GOOGLE_TRUTH}")
     testImplementation("org.junit.jupiter:junit-jupiter:${Versions.JUNIT}")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:${Versions.JUNIT}")
 }
 
 tasks {
-    val sourcesJar by registering(Jar::class) {
+    val sourcesJar = register<Jar>("sourcesJar") {
         archiveClassifier.set("sources")
         dependsOn("classes")
         from(sourceSets["main"].allSource)
     }
 
-    val javadocJar by registering(Jar::class) {
+    val javadocJar = register<Jar>("javadocJar") {
         archiveClassifier.set("javadoc")
         dependsOn("javadoc")
         from("${layout.buildDirectory}/javadoc")
-    }
-
-    artifacts {
-        archives(javadocJar)
-        archives(sourcesJar)
     }
 
     assemble {
@@ -62,6 +52,7 @@ publishing {
     repositories {
         maven {
             name = "ossrh"
+            credentials(PasswordCredentials::class)
             val releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
             val snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
             if (project.hasProperty("release")) {
