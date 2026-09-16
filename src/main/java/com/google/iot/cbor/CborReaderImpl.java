@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.math.BigInteger;
 import java.nio.BufferUnderflowException;
 import java.util.AbstractMap;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.NoSuchElementException;
@@ -40,15 +41,10 @@ class CborReaderImpl implements CborReader {
 
     private final DecoderStream mDecoderStream;
     private int mRemainingObjects;
-    private int mLastTag = CborTag.UNTAGGED;
-
-    private CborReaderImpl(DecoderStream decoderStream, int objectCount) {
-        mDecoderStream = decoderStream;
-        mRemainingObjects = objectCount;
-    }
 
     CborReaderImpl(InputStream inputStream, int objectCount) {
-        this(DecoderStream.create(inputStream), objectCount);
+        mDecoderStream = DecoderStream.create(inputStream);
+        mRemainingObjects = objectCount;
     }
 
     CborReaderImpl(byte[] bytes, int offset, int objectCount) {
@@ -85,226 +81,283 @@ class CborReaderImpl implements CborReader {
             throw new NoSuchElementException();
         }
 
-        int tag = mLastTag;
-        mLastTag = CborTag.UNTAGGED;
+        ArrayDeque<Frame> frames = new ArrayDeque<>();
+        int pendingTag = CborTag.UNTAGGED;
+        boolean tagPending = false;
 
         try {
-            byte firstByte = mDecoderStream.get();
-            int majorType = ((firstByte & 0xFF) >> 5);
-            byte additionalInfo = (byte) (firstByte & 0x1F);
-            BigInteger additionalData;
+            while (true) {
+                CborObject completed;
+                byte firstByte = mDecoderStream.get();
 
-            if (additionalInfo < CborObject.ADDITIONAL_INFO_EXTRA_1B) {
-                additionalData = BigInteger.valueOf(additionalInfo);
-
-            } else if (additionalInfo == CborObject.ADDITIONAL_INFO_EXTRA_1B) {
-                additionalData = BigInteger.valueOf(mDecoderStream.get() & 0xFF);
-
-            } else if (additionalInfo == CborObject.ADDITIONAL_INFO_EXTRA_2B) {
-                additionalData = BigInteger.valueOf(mDecoderStream.getShort() & 0xFFFF);
-
-            } else if (additionalInfo == CborObject.ADDITIONAL_INFO_EXTRA_4B) {
-                additionalData = BigInteger.valueOf(mDecoderStream.getInt() & 0xFFFFFFFFL);
-
-            } else if (additionalInfo == CborObject.ADDITIONAL_INFO_EXTRA_8B) {
-                additionalData = new BigInteger(Long.toUnsignedString(mDecoderStream.getLong()));
-            } else if (additionalInfo == CborObject.ADDITIONAL_INFO_EXTRA_INDEF) {
-                additionalData = BigInteger.valueOf(UNSPECIFIED);
-            } else {
-                throw new CborParseException(
-                        "Undefined additional info value "
-                                + additionalInfo
-                                + " for major type "
-                                + majorType);
-            }
-
-            switch (majorType) {
-                case CborMajorType.TAG:
-                    if (CborTag.isValid(additionalData.longValue())) {
-                        mLastTag = (int) additionalData.longValue();
-
-                    } else {
-                        LOGGER.warning("Ignoring invalid tag: " + additionalData);
+                if (firstByte == BREAK) {
+                    if (tagPending || frames.isEmpty()) {
+                        throw new CborParseException("CBOR data is truncated or corrupt");
                     }
 
-                    return readDataItem();
+                    Frame frame = frames.peek();
+                    if (!frame.indefinite || frame.pendingKey != null) {
+                        throw new CborParseException("CBOR data is truncated or corrupt");
+                    }
+                    frames.pop();
+                    completed = frame.finish();
 
-                case CborMajorType.POS_INTEGER:
-                    if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                    return CborInteger.create(additionalData, tag, CborMajorType.POS_INTEGER, additionalInfo);
+                } else {
+                    int majorType = ((firstByte & 0xFF) >> 5);
+                    byte additionalInfo = (byte) (firstByte & 0x1F);
+                    BigInteger additionalData;
 
-                case CborMajorType.NEG_INTEGER:
-                    if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                    return CborInteger.create(BigInteger.valueOf(-1L).subtract(additionalData), tag, CborMajorType.NEG_INTEGER, additionalInfo);
+                    if (additionalInfo < CborObject.ADDITIONAL_INFO_EXTRA_1B) {
+                        additionalData = BigInteger.valueOf(additionalInfo);
+                    } else if (additionalInfo == CborObject.ADDITIONAL_INFO_EXTRA_1B) {
+                        additionalData = BigInteger.valueOf(mDecoderStream.get() & 0xFF);
+                    } else if (additionalInfo == CborObject.ADDITIONAL_INFO_EXTRA_2B) {
+                        additionalData = BigInteger.valueOf(mDecoderStream.getShort() & 0xFFFF);
+                    } else if (additionalInfo == CborObject.ADDITIONAL_INFO_EXTRA_4B) {
+                        additionalData = BigInteger.valueOf(mDecoderStream.getInt() & 0xFFFFFFFFL);
+                    } else if (additionalInfo == CborObject.ADDITIONAL_INFO_EXTRA_8B) {
+                        additionalData =
+                                new BigInteger(Long.toUnsignedString(mDecoderStream.getLong()));
+                    } else if (additionalInfo == CborObject.ADDITIONAL_INFO_EXTRA_INDEF) {
+                        additionalData = BigInteger.valueOf(UNSPECIFIED);
+                    } else {
+                        throw new CborParseException(
+                                "Undefined additional info value "
+                                        + additionalInfo
+                                        + " for major type "
+                                        + majorType);
+                    }
 
-                case CborMajorType.BYTE_STRING:
-                    if (additionalData.compareTo(BigInteger.ZERO) < 0) {
-                        // Indefinite length byte string
-                        ArrayList<byte[]> aggregator = new ArrayList<>();
-                        CborReaderImpl subparser =
-                                new CborReaderImpl(mDecoderStream, additionalData.intValue());
-                        while (subparser.hasRemainingDataItems()) {
-                            CborObject obj = subparser.readDataItem();
-                            if (obj instanceof CborByteString
-                                    && obj.getMajorType() == CborMajorType.BYTE_STRING) {
-                                aggregator.addAll(Arrays.asList(((CborByteString) obj).byteArrayValue()));
-                            } else {
-                                throw new CborParseException(
-                                        "Unexpected major type in byte string stream");
-                            }
-                        }
-                        if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-
-                        if (mDecoderStream.get() != BREAK) {
-                            throw new CborParseException("Missing break");
-                        }
-                        CborByteString ret = CborByteString.wrap(aggregator.toArray(new byte[0][]), tag, true, null);
-                        if(tag == CborTag.BIGNUM_POS || tag == CborTag.BIGNUM_NEG) {
-                            return CborInteger.create(ret);
+                    if (majorType == CborMajorType.TAG) {
+                        tagPending = true;
+                        pendingTag = CborTag.UNTAGGED;
+                        if (CborTag.isValid(additionalData.longValue())) {
+                            pendingTag = (int) additionalData.longValue();
                         } else {
-                            return ret;
+                            LOGGER.warning("Ignoring invalid tag: " + additionalData);
                         }
-                    } else {
-                        // Definite length byte string
-                        if (BigInteger.valueOf(additionalData.intValue()).equals(additionalData)) {
-                            // whole thing fits inside a single byte array
-                            byte[] bytes = new byte[additionalData.intValue()];
-                            mDecoderStream.get(bytes);
-                            if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                            CborByteString ret = CborByteString.wrap(BigArrays.wrap(bytes), tag, false, (int)additionalInfo);
-                            if(tag == CborTag.BIGNUM_POS || tag == CborTag.BIGNUM_NEG) {
-                                return CborInteger.create(ret);
+                        continue;
+                    }
+
+                    int tag = pendingTag;
+                    pendingTag = CborTag.UNTAGGED;
+                    tagPending = false;
+
+                    switch (majorType) {
+                        case CborMajorType.POS_INTEGER:
+                            completed =
+                                    CborInteger.create(
+                                            additionalData,
+                                            tag,
+                                            CborMajorType.POS_INTEGER,
+                                            additionalInfo);
+                            break;
+
+                        case CborMajorType.NEG_INTEGER:
+                            completed =
+                                    CborInteger.create(
+                                            BigInteger.valueOf(-1L).subtract(additionalData),
+                                            tag,
+                                            CborMajorType.NEG_INTEGER,
+                                            additionalInfo);
+                            break;
+
+                        case CborMajorType.BYTE_STRING:
+                        case CborMajorType.TEXT_STRING:
+                        case CborMajorType.ARRAY:
+                        case CborMajorType.MAP:
+                            if (additionalInfo == CborObject.ADDITIONAL_INFO_EXTRA_INDEF
+                                    || majorType == CborMajorType.ARRAY
+                                    || majorType == CborMajorType.MAP) {
+                                Frame frame =
+                                        new Frame(majorType, additionalData, tag, additionalInfo);
+                                if (frame.isComplete()) {
+                                    completed = frame.finish();
+                                } else {
+                                    frames.push(frame);
+                                    continue;
+                                }
+                            } else if (majorType == CborMajorType.BYTE_STRING) {
+                                CborByteString byteString;
+                                if (BigInteger.valueOf(additionalData.intValue())
+                                        .equals(additionalData)) {
+                                    byte[] bytes = new byte[additionalData.intValue()];
+                                    mDecoderStream.get(bytes);
+                                    byteString =
+                                            CborByteString.wrap(
+                                                    BigArrays.wrap(bytes),
+                                                    tag,
+                                                    false,
+                                                    (int) additionalInfo);
+                                } else {
+                                    byte[][] bytes =
+                                            ByteBigArrays.newBigArray(additionalData.longValue());
+                                    mDecoderStream.get(bytes);
+                                    byteString =
+                                            CborByteString.wrap(
+                                                    bytes, tag, false, (int) additionalInfo);
+                                }
+                                completed =
+                                        tag == CborTag.BIGNUM_POS || tag == CborTag.BIGNUM_NEG
+                                                ? CborInteger.create(byteString)
+                                                : byteString;
                             } else {
-                                return ret;
+                                byte[] bytes = new byte[additionalData.intValue()];
+                                mDecoderStream.get(bytes);
+                                completed =
+                                        CborTextString.create(
+                                                bytes,
+                                                0,
+                                                bytes.length,
+                                                tag,
+                                                false,
+                                                (int) additionalInfo);
                             }
-                        } else {
-                            // cbor byte array is too big to fit in normal byte array
-                            byte[][] bytes = ByteBigArrays.newBigArray(additionalData.longValue());
-                            mDecoderStream.get(bytes);
-                            if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                            CborByteString ret = CborByteString.wrap(bytes, tag, false, (int)additionalInfo);
-                            if(tag == CborTag.BIGNUM_POS || tag == CborTag.BIGNUM_NEG) {
-                                return CborInteger.create(ret);
+                            break;
+
+                        case CborMajorType.OTHER:
+                            if (additionalInfo == CborFloat.TYPE_HALF) {
+                                completed =
+                                        CborFloat.createHalf(
+                                                Half.shortBitsToFloat(additionalData.shortValue()),
+                                                tag);
+                            } else if (additionalInfo == CborFloat.TYPE_FLOAT) {
+                                completed =
+                                        CborFloat.create(
+                                                Float.intBitsToFloat(additionalData.intValue()), tag);
+                            } else if (additionalInfo == CborFloat.TYPE_DOUBLE) {
+                                completed =
+                                        CborFloat.create(
+                                                Double.longBitsToDouble(additionalData.longValue()),
+                                                tag);
                             } else {
-                                return ret;
+                                completed = CborSimple.create(additionalData.intValue(), tag);
                             }
-                        }
-                    }
+                            break;
 
-                case CborMajorType.TEXT_STRING:
-                    if (additionalData.compareTo(BigInteger.ZERO) < 0) {
-                        // Indefinite length byte string
-                        ArrayList<byte[]> aggregator = new ArrayList<>();
-                        CborReaderImpl subparser =
-                                new CborReaderImpl(mDecoderStream, additionalData.intValue());
-                        while (subparser.hasRemainingDataItems()) {
-                            CborObject obj = subparser.readDataItem();
-                            if (obj instanceof CborTextString) {
-                                aggregator.addAll(Arrays.asList(((CborTextString) obj).byteArrayValue()));
-                            } else {
-                                throw new CborParseException(
-                                        "Unexpected major type in text string stream");
-                            }
-                        }
-                        if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-
-                        if (mDecoderStream.get() != BREAK) {
-                            throw new CborParseException("Missing break");
-                        }
-                        byte[][] bytes = aggregator.toArray(new byte[0][]);
-                        int[] offsets = new int[bytes.length];
-                        int[] lengths = new int[bytes.length];
-                        for (int i = 0; i < bytes.length; i++) {
-                            offsets[i] = 0;
-                            lengths[i] = bytes[i].length;
-                        }
-
-                        return CborTextString.create(bytes, offsets, lengths, tag, true, null);
-                    } else {
-                        byte[] bytes = new byte[additionalData.intValue()];
-                        mDecoderStream.get(bytes);
-                        if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                        return CborTextString.create(bytes, 0, bytes.length, tag, false, (int)additionalInfo);
+                        default:
+                            throw new CborParseException("Invalid major type value " + majorType);
                     }
-
-                case CborMajorType.ARRAY: {
-                    boolean isIndefiniteLength = additionalData.compareTo(BigInteger.valueOf(UNSPECIFIED)) == 0;
-                    CborArray ret;
-                    if(isIndefiniteLength) {
-                        ret = CborArray.create(null, tag, true, null);
-                    } else {
-                        ret = CborArray.create(null, tag, false, (int)additionalInfo);
-                    }
-                    CborReaderImpl subparser =
-                            new CborReaderImpl(mDecoderStream, additionalData.intValue());
-                    while (subparser.hasRemainingDataItems()) {
-                        ret.add(subparser.readDataItem());
-                    }
-                    if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-
-                    if (isIndefiniteLength && mDecoderStream.get() != BREAK) {
-                        throw new CborParseException("Missing break");
-                    }
-                    return ret;
                 }
 
-                case CborMajorType.MAP: {
-                    boolean isIndefiniteLength = additionalData.compareTo(BigInteger.valueOf(UNSPECIFIED)) == 0;
-                    CborMap ret;
-                    if(isIndefiniteLength) {
-                        ret = CborMap.create(null, tag, true, null);
-                    } else {
-                        ret = CborMap.create(null, tag, false, (int)additionalInfo);
-                        additionalData = additionalData.multiply(BigInteger.valueOf(2L));
-                    }
-                    CborReaderImpl subparser =
-                            new CborReaderImpl(mDecoderStream, additionalData.intValue());
-
-                    while (subparser.hasRemainingDataItems()) {
-                        CborObject key = subparser.readDataItem();
-                        CborObject value = subparser.readDataItem();
-                        ret.mapValue().add(new AbstractMap.SimpleEntry<>(key, value));
+                while (true) {
+                    if (frames.isEmpty()) {
+                        if (mRemainingObjects != UNSPECIFIED) {
+                            mRemainingObjects--;
+                        }
+                        return completed;
                     }
 
-                    if ((additionalData.compareTo(BigInteger.valueOf(UNSPECIFIED)) == 0) && mDecoderStream.get() != BREAK) {
-                        throw new CborParseException("Missing break");
+                    Frame parent = frames.peek();
+                    parent.accept(completed);
+                    if (!parent.isComplete()) {
+                        break;
                     }
-
-                    if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                    return ret;
+                    frames.pop();
+                    completed = parent.finish();
                 }
-
-                case CborMajorType.OTHER:
-                    if (additionalInfo == CborFloat.TYPE_HALF) {
-                        // Half-precision float
-                        if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                        return CborFloat.createHalf(
-                                Half.shortBitsToFloat(additionalData.shortValue()), tag);
-
-                    } else if (additionalInfo == CborFloat.TYPE_FLOAT) {
-                        // Full-precision float
-                        if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                        return CborFloat.create(Float.intBitsToFloat(additionalData.intValue()), tag);
-
-                    } else if (additionalInfo == CborFloat.TYPE_DOUBLE) {
-                        // Double-precision float
-                        if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                        return CborFloat.create(Double.longBitsToDouble(additionalData.longValue()), tag);
-
-                    } else {
-                        if (mRemainingObjects != UNSPECIFIED) mRemainingObjects--;
-                        return CborSimple.create(additionalData.intValue(), tag);
-                    }
-
-                default:
-                    throw new CborParseException("Invalid major type value " + majorType);
             }
-
         } catch (EOFException
-                 | BufferUnderflowException
-                 | NoSuchElementException
-                 | IllegalArgumentException x) {
+                | BufferUnderflowException
+                | NoSuchElementException
+                | IllegalArgumentException x) {
             throw new CborParseException("CBOR data is truncated or corrupt", x);
+        }
+    }
+
+    private static final class Frame {
+        final int majorType;
+        final int tag;
+        final byte additionalInfo;
+        final boolean indefinite;
+        long remaining;
+        final CborArray array;
+        final CborMap map;
+        final ArrayList<byte[]> chunks;
+        CborObject pendingKey;
+
+        Frame(int majorType, BigInteger additionalData, int tag, byte additionalInfo) {
+            this.majorType = majorType;
+            this.tag = tag;
+            this.additionalInfo = additionalInfo;
+            indefinite = additionalInfo == CborObject.ADDITIONAL_INFO_EXTRA_INDEF;
+            remaining = additionalData.longValue();
+            array =
+                    majorType == CborMajorType.ARRAY
+                            ? CborArray.create(
+                                    null, tag, indefinite, indefinite ? null : (int) additionalInfo)
+                            : null;
+            map =
+                    majorType == CborMajorType.MAP
+                            ? CborMap.create(
+                                    null, tag, indefinite, indefinite ? null : (int) additionalInfo)
+                            : null;
+            chunks =
+                    majorType == CborMajorType.BYTE_STRING
+                                    || majorType == CborMajorType.TEXT_STRING
+                            ? new ArrayList<>()
+                            : null;
+        }
+
+        void accept(CborObject child) throws CborParseException {
+            if (majorType == CborMajorType.ARRAY) {
+                array.add(child);
+                if (!indefinite) {
+                    remaining--;
+                }
+            } else if (majorType == CborMajorType.MAP) {
+                if (pendingKey == null) {
+                    pendingKey = child;
+                } else {
+                    map.mapValue().add(new AbstractMap.SimpleEntry<>(pendingKey, child));
+                    pendingKey = null;
+                    if (!indefinite) {
+                        remaining--;
+                    }
+                }
+            } else if (majorType == CborMajorType.BYTE_STRING
+                    && child instanceof CborByteString
+                    && child.getMajorType() == CborMajorType.BYTE_STRING) {
+                chunks.addAll(Arrays.asList(((CborByteString) child).byteArrayValue()));
+            } else if (majorType == CborMajorType.TEXT_STRING
+                    && child instanceof CborTextString) {
+                chunks.addAll(Arrays.asList(((CborTextString) child).byteArrayValue()));
+            } else if (majorType == CborMajorType.BYTE_STRING) {
+                throw new CborParseException("Unexpected major type in byte string stream");
+            } else {
+                throw new CborParseException("Unexpected major type in text string stream");
+            }
+        }
+
+        boolean isComplete() {
+            if (indefinite) {
+                return false;
+            }
+            return remaining == 0 && pendingKey == null;
+        }
+
+        CborObject finish() {
+            if (majorType == CborMajorType.ARRAY) {
+                return array;
+            }
+            if (majorType == CborMajorType.MAP) {
+                return map;
+            }
+            if (majorType == CborMajorType.BYTE_STRING) {
+                CborByteString byteString =
+                        CborByteString.wrap(chunks.toArray(new byte[0][]), tag, true, null);
+                return tag == CborTag.BIGNUM_POS || tag == CborTag.BIGNUM_NEG
+                        ? CborInteger.create(byteString)
+                        : byteString;
+            }
+
+            byte[][] bytes = chunks.toArray(new byte[0][]);
+            int[] offsets = new int[bytes.length];
+            int[] lengths = new int[bytes.length];
+            for (int i = 0; i < bytes.length; i++) {
+                lengths[i] = bytes[i].length;
+            }
+            return CborTextString.create(bytes, offsets, lengths, tag, true, null);
         }
     }
 }

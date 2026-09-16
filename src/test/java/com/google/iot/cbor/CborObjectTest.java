@@ -19,9 +19,16 @@ package com.google.iot.cbor;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.math.BigInteger;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.ArrayDeque;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -233,4 +240,305 @@ public class CborObjectTest extends CborTestBase {
         String cborFixedArraysOutput = encode(obj.toCborByteArray());
         assertEquals(cborFixedArrays, cborFixedArraysOutput);
     }
+    @Test
+    void testDeepActualBlock() throws Exception {
+        byte[] encoded;
+        try (InputStream input =
+                getClass()
+                        .getResourceAsStream(
+                                "/com/google/iot/cbor/bad_block_preprod.cbor.hex")) {
+            assertNotNull(input);
+            encoded =
+                    decode(
+                            new String(input.readAllBytes(), StandardCharsets.US_ASCII).trim());
+        }
+
+        assertEquals(44_439, encoded.length);
+        assertEquals(
+                "b08d698c90a0f3543848507155cd69d549da509a2ed7ae189920e60e7ef07ff7",
+                digest(encoded));
+
+        CborArray outer = (CborArray) CborObject.createFromCborByteArray(encoded);
+        assertEquals(2, outer.size());
+        assertInteger(outer.listValue().get(0), 4);
+        CborByteString taggedPayload = (CborByteString) outer.listValue().get(1);
+        assertEquals(CborTag.CBOR_DATA_ITEM, taggedPayload.getTag());
+
+        byte[] payload = flatten(taggedPayload.byteArrayValue());
+        assertEquals(44_432, payload.length);
+        assertEquals(
+                "ca0feb0e4ee2169c4d1baea466b1f128c50b81dab6cb50f9e874cf277a5f6710",
+                digest(payload));
+
+        CborArray decoded = (CborArray) CborObject.createFromCborByteArray(payload);
+        CborArray converted = taggedPayload.toJavaObject(CborArray.class);
+        for (CborArray result : new CborArray[] {decoded, converted}) {
+            assertEquals(2, result.size());
+            assertInteger(result.listValue().get(0), 7);
+            TreeStats stats = treeStats(result);
+            assertEquals(11_381, stats.arrays);
+            assertEquals(293, stats.maps);
+            assertEquals(10_772, stats.maxDepth);
+        }
+    }
+
+    @Test
+    void testDeepCollectionContinuations() throws Exception {
+        int depth = 20_000;
+
+        CborObject value = CborObject.createFromCborByteArray(nestedArrays(depth, false));
+        for (int i = 0; i < depth; i++) {
+            CborArray array = (CborArray) value;
+            assertEquals(1, array.size());
+            value = array.listValue().get(0);
+        }
+        assertInteger(value, 0);
+
+        value = CborObject.createFromCborByteArray(nestedArrays(depth, true));
+        for (int i = 0; i < depth; i++) {
+            CborArray array = (CborArray) value;
+            assertEquals(1, array.size());
+            value = array.listValue().get(0);
+        }
+        assertInteger(value, 0);
+
+        value = CborObject.createFromCborByteArray(nestedMapValues(depth, false));
+        for (int i = 0; i < depth; i++) {
+            CborMap map = (CborMap) value;
+            assertEquals(1, map.size());
+            Map.Entry<CborObject, CborObject> entry = map.mapValue().get(0);
+            assertInteger(entry.getKey(), 0);
+            value = entry.getValue();
+        }
+        assertInteger(value, 0);
+
+        value = CborObject.createFromCborByteArray(nestedMapValues(depth, true));
+        for (int i = 0; i < depth; i++) {
+            CborMap map = (CborMap) value;
+            assertEquals(1, map.size());
+            Map.Entry<CborObject, CborObject> entry = map.mapValue().get(0);
+            assertInteger(entry.getKey(), 0);
+            value = entry.getValue();
+        }
+        assertInteger(value, 0);
+
+        byte[] mapKeys = new byte[depth * 2 + 1];
+        for (int i = 0; i < depth; i++) {
+            mapKeys[i] = (byte) 0xa1;
+        }
+        for (int i = depth + 1; i < mapKeys.length; i++) {
+            mapKeys[i] = 1;
+        }
+        value = CborObject.createFromCborByteArray(mapKeys);
+        for (int i = 0; i < depth; i++) {
+            CborMap map = (CborMap) value;
+            assertEquals(1, map.size());
+            Map.Entry<CborObject, CborObject> entry = map.mapValue().get(0);
+            assertInteger(entry.getValue(), 1);
+            value = entry.getKey();
+        }
+        assertInteger(value, 0);
+
+        byte[] alternating = new byte[depth * 2 + 1];
+        int length = 0;
+        for (int i = 0; i < depth; i++) {
+            if ((i & 1) == 0) {
+                alternating[length++] = (byte) 0x81;
+            } else {
+                alternating[length++] = (byte) 0xa1;
+                alternating[length++] = 0;
+            }
+        }
+        alternating[length++] = 0;
+        value =
+                CborObject.createFromCborByteArray(
+                        java.util.Arrays.copyOf(alternating, length));
+        for (int i = 0; i < depth; i++) {
+            if ((i & 1) == 0) {
+                CborArray array = (CborArray) value;
+                assertEquals(1, array.size());
+                value = array.listValue().get(0);
+            } else {
+                CborMap map = (CborMap) value;
+                assertEquals(1, map.size());
+                Map.Entry<CborObject, CborObject> entry = map.mapValue().get(0);
+                assertInteger(entry.getKey(), 0);
+                value = entry.getValue();
+            }
+        }
+        assertInteger(value, 0);
+    }
+
+    @Test
+    void testDeepTagLoopAndIsolation() throws Exception {
+        byte[] tags = new byte[20_001];
+        java.util.Arrays.fill(tags, 0, 20_000, (byte) 0xc0);
+        tags[20_000] = 1;
+        CborObject value = CborObject.createFromCborByteArray(tags);
+        assertInteger(value, 1);
+        assertEquals(0, value.getTag());
+
+        CborArray array = (CborArray) CborObject.createFromCborByteArray(decode("82c00102"));
+        assertEquals(0, array.listValue().get(0).getTag());
+        assertEquals(CborTag.UNTAGGED, array.listValue().get(1).getTag());
+    }
+
+    @Test
+    void testDeepStreamBoundaries() throws Exception {
+        byte[] item = nestedArrays(20_000, false);
+        byte[] sequence = concat(item, new byte[] {2});
+
+        CborReader reader =
+                CborReader.createFromInputStream(new ByteArrayInputStream(sequence), 2);
+        assertNestedArrays(reader.readDataItem(), 20_000);
+        assertEquals(item.length, reader.bytesParsed());
+        assertInteger(reader.readDataItem(), 2);
+        assertEquals(sequence.length, reader.bytesParsed());
+        assertFalse(reader.hasRemainingDataItems());
+
+        byte[] prefixed = new byte[sequence.length + 3];
+        System.arraycopy(sequence, 0, prefixed, 3, sequence.length);
+        reader = CborReader.createFromByteArray(prefixed, 3, 2);
+        assertNestedArrays(reader.readDataItem(), 20_000);
+        assertEquals(item.length, reader.bytesParsed());
+        assertInteger(reader.readDataItem(), 2);
+        assertEquals(sequence.length, reader.bytesParsed());
+        assertFalse(reader.hasRemainingDataItems());
+
+        reader =
+                CborReader.createFromInputStream(new ByteArrayInputStream(sequence), 1);
+        assertNestedArrays(reader.readDataItem(), 20_000);
+        assertEquals(item.length, reader.bytesParsed());
+        assertFalse(reader.hasRemainingDataItems());
+
+        assertThrows(
+                CborParseException.class,
+                () -> CborObject.createFromCborByteArray(sequence));
+    }
+
+    @Test
+    void testDeepFailureUnwinding() {
+        int depth = 20_000;
+        byte[] definite = nestedArrays(depth, false);
+        byte[] indefinite = nestedArrays(depth, true);
+        assertThrows(
+                CborParseException.class,
+                () ->
+                        CborObject.createFromCborByteArray(
+                                java.util.Arrays.copyOf(definite, definite.length - 1)));
+        assertThrows(
+                CborParseException.class,
+                () ->
+                        CborObject.createFromCborByteArray(
+                                java.util.Arrays.copyOf(indefinite, indefinite.length - 1)));
+
+        for (String hex : new String[] {"c0", "81ff", "bf00ff", "9fc0ff"}) {
+            assertThrows(
+                    CborParseException.class,
+                    () -> CborObject.createFromCborByteArray(decode(hex)));
+        }
+
+        assertThrows(
+                CborParseException.class,
+                () ->
+                        CborObject.createFromCborByteArray(
+                                concat(new byte[] {(byte) 0x5f}, definite, new byte[] {(byte) 0xff})));
+        assertThrows(
+                CborParseException.class,
+                () ->
+                        CborObject.createFromCborByteArray(
+                                concat(new byte[] {(byte) 0x7f}, definite, new byte[] {(byte) 0xff})));
+        assertThrows(
+                CborParseException.class,
+                () ->
+                        CborObject.createFromCborByteArray(
+                                decode("9b0000000100000000")));
+    }
+
+    private static byte[] nestedArrays(int depth, boolean indefinite) {
+        byte[] bytes = new byte[indefinite ? depth * 2 + 1 : depth + 1];
+        java.util.Arrays.fill(bytes, 0, depth, indefinite ? (byte) 0x9f : (byte) 0x81);
+        if (indefinite) {
+            java.util.Arrays.fill(bytes, depth + 1, bytes.length, (byte) 0xff);
+        }
+        return bytes;
+    }
+
+    private static byte[] nestedMapValues(int depth, boolean indefinite) {
+        byte[] bytes = new byte[indefinite ? depth * 3 + 1 : depth * 2 + 1];
+        int offset = 0;
+        for (int i = 0; i < depth; i++) {
+            bytes[offset++] = indefinite ? (byte) 0xbf : (byte) 0xa1;
+            bytes[offset++] = 0;
+        }
+        bytes[offset++] = 0;
+        if (indefinite) {
+            java.util.Arrays.fill(bytes, offset, bytes.length, (byte) 0xff);
+        }
+        return bytes;
+    }
+
+    private static void assertNestedArrays(CborObject value, int depth) {
+        for (int i = 0; i < depth; i++) {
+            CborArray array = (CborArray) value;
+            assertEquals(1, array.size());
+            value = array.listValue().get(0);
+        }
+        assertInteger(value, 0);
+    }
+
+    private static void assertInteger(CborObject value, long expected) {
+        assertInstanceOf(CborInteger.class, value);
+        assertEquals(expected, ((CborInteger) value).longValue());
+    }
+
+    private static TreeStats treeStats(CborObject root) {
+        int arrays = 0;
+        int maps = 0;
+        int maxDepth = 0;
+        ArrayDeque<TreeNode> pending = new ArrayDeque<>();
+        pending.push(new TreeNode(root, 1));
+        while (!pending.isEmpty()) {
+            TreeNode node = pending.pop();
+            if (node.value instanceof CborArray array) {
+                arrays++;
+                maxDepth = Math.max(maxDepth, node.depth);
+                for (CborObject child : array.listValue()) {
+                    pending.push(new TreeNode(child, node.depth + 1));
+                }
+            } else if (node.value instanceof CborMap map) {
+                maps++;
+                maxDepth = Math.max(maxDepth, node.depth);
+                for (Map.Entry<CborObject, CborObject> entry : map.mapValue()) {
+                    pending.push(new TreeNode(entry.getKey(), node.depth + 1));
+                    pending.push(new TreeNode(entry.getValue(), node.depth + 1));
+                }
+            }
+        }
+        return new TreeStats(arrays, maps, maxDepth);
+    }
+
+    private static byte[] flatten(byte[][] segments) {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        for (byte[] segment : segments) {
+            output.writeBytes(segment);
+        }
+        return output.toByteArray();
+    }
+
+    private static byte[] concat(byte[]... arrays) {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        for (byte[] array : arrays) {
+            output.writeBytes(array);
+        }
+        return output.toByteArray();
+    }
+
+    private static String digest(byte[] bytes) throws Exception {
+        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+    }
+
+    private record TreeNode(CborObject value, int depth) {}
+
+    private record TreeStats(int arrays, int maps, int maxDepth) {}
 }
