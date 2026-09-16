@@ -1,10 +1,9 @@
 import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
-import org.gradle.api.credentials.PasswordCredentials
 
 plugins {
     java
     id("io.github.ben-manes.versions") version Versions.VERSIONS_PLUGIN
-    id("maven-publish")
+    id("com.vanniktech.maven.publish") version Versions.MAVEN_PUBLISH_PLUGIN
     id("signing")
 }
 
@@ -30,79 +29,39 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:${Versions.JUNIT}")
 }
 
-tasks {
-    val sourcesJar = register<Jar>("sourcesJar") {
-        archiveClassifier.set("sources")
-        dependsOn("classes")
-        from(sourceSets["main"].allSource)
-    }
-
-    val javadocJar = register<Jar>("javadocJar") {
-        archiveClassifier.set("javadoc")
-        dependsOn("javadoc")
-        from("${layout.buildDirectory}/javadoc")
-    }
-
-    assemble {
-        dependsOn("sourcesJar", "javadocJar")
-    }
-}
-
-publishing {
-    repositories {
-        maven {
-            name = "ossrh"
-            credentials(PasswordCredentials::class)
-            val releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
-            val snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
-            if (project.hasProperty("release")) {
-                setUrl(releasesRepoUrl)
-            } else {
-                setUrl(snapshotsRepoUrl)
-            }
-        }
-    }
-    publications {
-        create<MavenPublication>("mavenKotlin") {
-            from(components["java"])
-            artifact(tasks["sourcesJar"])
-            artifact(tasks["javadocJar"])
-
-            pom {
-                groupId = "io.newm"
-                artifactId = "com.google.iot.cbor"
-
-                name.set("CborTree")
-                description.set(">A Java API for decoding, manipulating, and encoding CBOR data items.")
-                url.set("https://github.com/AndrewWestberg/cbortree")
-                licenses {
-                    license {
-                        name.set("Apache 2.0")
-                        url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
-                    }
-                }
-                developers {
-                    developer {
-                        id.set("AndrewWestberg")
-                        name.set("Andrew Westberg")
-                        email.set("andrewwestberg@gmail.com")
-                        organization.set("NEWM")
-                        organizationUrl.set("https://newm.io")
-                    }
-                }
-                scm {
-                    connection.set("scm:git:git://github.com/AndrewWestberg/cbortree.git")
-                    developerConnection.set("scm:git:ssh://github.com/AndrewWestberg/cbortree.git")
-                    url.set("https://github.com/AndrewWestberg/cbortree")
-                }
-            }
-        }
-    }
-}
-
 signing {
     useGpgCmd()
-    sign(publishing.publications["mavenKotlin"])
+}
+
+mavenPublishing {
+    publishToMavenCentral()
+    signAllPublications()
+    coordinates("io.newm", "com.google.iot.cbor", version.toString())
+    pom {
+        name.set("CborTree")
+        description.set("A Java API for decoding, manipulating, and encoding CBOR data items.")
+        url.set("https://github.com/AndrewWestberg/cbortree")
+        licenses {
+            license {
+                name.set("Apache 2.0")
+                url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+            }
+        }
+        developers {
+            developer {
+                id.set("AndrewWestberg")
+                name.set("Andrew Westberg")
+                email.set("andrewwestberg@gmail.com")
+                organization.set("NEWM")
+                organizationUrl.set("https://newm.io")
+            }
+        }
+        scm {
+            connection.set("scm:git:git://github.com/AndrewWestberg/cbortree.git")
+            developerConnection.set("scm:git:ssh://github.com/AndrewWestberg/cbortree.git")
+            url.set("https://github.com/AndrewWestberg/cbortree")
+        }
+    }
 }
 
 fun isNonStable(version: String): Boolean {

@@ -11,5 +11,6 @@ object Versions {
     const val KTLINT = "1.2.1"
     const val KTLINT_PLUGIN = "12.1.0"
     const val MOCKK = "1.13.10"
+    const val MAVEN_PUBLISH_PLUGIN = "0.36.0"
     const val VERSIONS_PLUGIN = "0.63.1"
 }
